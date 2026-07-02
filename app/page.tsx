@@ -18,7 +18,7 @@ export default async function Home() {
       <NavBar businessName={settings?.business_name ?? "Hair by Tanya"} />
 
       {/* Hero */}
-      <section className="bg-blush px-6 py-20 text-center md:py-28">
+      <section className="bg-blush px-6 pb-20 pt-4 text-center md:pb-28 md:pt-6">
         <div className="mx-auto max-w-3xl">
           <p className="font-body text-sm uppercase tracking-[0.3em] text-glow">
             {settings?.hero_kicker}
@@ -44,6 +44,12 @@ export default async function Home() {
               className="rounded-full border-2 border-plum px-8 py-3 font-display text-plum transition-colors hover:bg-plum hover:text-blush"
             >
               View price list
+            </Link>
+            <Link
+              href="/reviews"
+              className="rounded-full border-2 border-plum px-8 py-3 font-display text-plum transition-colors hover:bg-plum hover:text-blush"
+            >
+              View reviews
             </Link>
           </div>
         </div>
