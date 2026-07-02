@@ -1,14 +1,15 @@
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import MailingListPopup from "@/components/MailingListPopup";
-import { getSiteSettings, getSocialLinks, getPriceList } from "@/lib/data";
+import { getSiteSettings, getSocialLinks, getGalleryImages } from "@/lib/data";
+import Image from "next/image";
 import Link from "next/link";
 
 export default async function Home() {
-  const [settings, socialLinks, { categories }] = await Promise.all([
+  const [settings, socialLinks, galleryImages] = await Promise.all([
     getSiteSettings(),
     getSocialLinks(),
-    getPriceList(),
+    getGalleryImages(),
   ]);
 
   return (
@@ -65,38 +66,36 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Services teaser */}
+      {/* Gallery */}
       <section className="bg-blush px-6 py-20 md:py-28">
         <div className="mx-auto max-w-5xl text-center">
-          <h2 className="font-display text-3xl text-plum md:text-4xl">Our Services</h2>
+          <h2 className="font-display text-3xl text-plum md:text-4xl">Gallery</h2>
           <p className="mx-auto mt-3 max-w-xl font-body text-plum/80">
-            A snapshot of what we offer — see the full price list for every treatment and cost.
+            A look at some recent work.
           </p>
 
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 md:grid-cols-3">
-            {(categories.length > 0
-              ? categories
-              : [{ id: "placeholder", name: "Add your treatment categories in the admin panel" }]
-            )
-              .slice(0, 6)
-              .map((category) => (
+          {galleryImages.length === 0 ? (
+            <p className="mt-12 font-body text-plum/60">
+              Photos coming soon — add some in the admin panel.
+            </p>
+          ) : (
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {galleryImages.map((image) => (
                 <div
-                  key={category.id}
-                  className="flex aspect-square flex-col items-center justify-center rounded-2xl bg-rose/40 p-6 text-center transition-transform hover:-translate-y-1 hover:bg-rose/60"
+                  key={image.id}
+                  className="relative aspect-square overflow-hidden rounded-2xl bg-rose/30"
                 >
-                  <span className="font-display text-lg text-plum md:text-xl">
-                    {category.name}
-                  </span>
+                  <Image
+                    src={image.image_url}
+                    alt={image.caption || "Hair by Tanya gallery photo"}
+                    fill
+                    className="object-cover transition-transform hover:scale-105"
+                    sizes="(max-width: 768px) 50vw, 33vw"
+                  />
                 </div>
               ))}
-          </div>
-
-          <Link
-            href="/pricelist"
-            className="mt-10 inline-block rounded-full bg-maroon px-8 py-3 font-display text-blush transition-colors hover:bg-glow"
-          >
-            See full price list
-          </Link>
+            </div>
+          )}
         </div>
       </section>
 

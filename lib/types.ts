@@ -75,6 +75,16 @@ export interface AvailabilitySlot {
   google_event_id: string | null;
 }
 
+export interface GalleryImage {
+  id: string;
+  image_url: string;
+  storage_path: string;
+  caption: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface Booking {
   id: string;
   slot_id: string;

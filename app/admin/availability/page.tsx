@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/client";
 import type { AvailabilitySlot, Booking } from "@/lib/types";
 import { format } from "date-fns";
 
+// Booking row with the related treatment name embedded via Supabase's
+// foreign-key join (price_items.name), used only for display here.
+type BookingWithService = Booking & { price_items: { name: string } | null };
+
 // Converts a wall-clock date+time as understood in Europe/Dublin into the
 // correct UTC Date, regardless of what timezone the browser/computer is
 // actually set to. This makes slot generation immune to a misconfigured
@@ -47,7 +51,7 @@ function dublinTimeToUTCDate(dateStr: string, hours: number, minutes: number): D
 export default function AdminAvailabilityPage() {
   const supabase = createClient();
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<BookingWithService[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Bulk slot generator state
@@ -64,10 +68,13 @@ export default function AdminAvailabilityPage() {
         .select("*")
         .gte("start_time", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order("start_time"),
-      supabase.from("bookings").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("bookings")
+        .select("*, price_items(name)")
+        .order("created_at", { ascending: false }),
     ]);
     setSlots(slotData ?? []);
-    setBookings(bookingData ?? []);
+    setBookings((bookingData as unknown as BookingWithService[]) ?? []);
     setLoading(false);
   }
 
@@ -208,6 +215,7 @@ export default function AdminAvailabilityPage() {
               <tr>
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Contact</th>
+                <th className="px-4 py-3">Service</th>
                 <th className="px-4 py-3">Notes</th>
                 <th className="px-4 py-3">Booked on</th>
                 <th className="px-4 py-3"></th>
@@ -221,6 +229,7 @@ export default function AdminAvailabilityPage() {
                     {b.customer_email}
                     {b.customer_phone && <div className="text-xs text-plum/60">{b.customer_phone}</div>}
                   </td>
+                  <td className="px-4 py-3">{b.price_items?.name || "—"}</td>
                   <td className="px-4 py-3">{b.notes || "—"}</td>
                   <td className="px-4 py-3">{format(new Date(b.created_at), "d MMM yyyy")}</td>
                   <td className="px-4 py-3">
@@ -232,7 +241,7 @@ export default function AdminAvailabilityPage() {
               ))}
               {bookings.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-plum/60">
+                  <td colSpan={6} className="px-4 py-6 text-center text-plum/60">
                     No bookings yet.
                   </td>
                 </tr>

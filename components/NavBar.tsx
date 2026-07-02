@@ -10,34 +10,33 @@ const links = [
 export default function NavBar({ businessName }: { businessName: string }) {
   return (
     <header className="bg-blush">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5 md:px-10">
-        <Link href="/" className="flex items-center gap-4">
+      <div className="mx-auto flex max-w-6xl flex-col items-center px-6 py-8 md:py-10">
+        <Link href="/" className="flex items-center justify-center">
           <Image
             src="/images/logo.png"
             alt={`${businessName} logo`}
-            width={64}
-            height={64}
-            className="h-14 w-14 md:h-16 md:w-16"
+            width={220}
+            height={220}
+            className="h-32 w-32 md:h-44 md:w-44"
             priority
           />
-          <span className="font-display text-2xl font-semibold tracking-wide text-plum md:text-3xl">
-            {businessName}
-          </span>
         </Link>
 
-        <ul className="flex items-center gap-5 font-display text-sm tracking-wide text-plum md:gap-8 md:text-base">
-          {links.map((link) => (
-            <li key={link.href}>
-              <Link
-                href={link.href}
-                className="rounded-full px-3 py-2 transition-colors hover:bg-rose/40 hover:text-maroon"
-              >
-                {link.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+        <nav className="mt-4 md:mt-6">
+          <ul className="flex items-center gap-6 font-display text-sm tracking-wide text-plum md:gap-10 md:text-base">
+            {links.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="rounded-full px-3 py-2 transition-colors hover:bg-rose/40 hover:text-maroon"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
     </header>
   );
 }

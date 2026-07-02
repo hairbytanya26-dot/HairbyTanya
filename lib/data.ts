@@ -5,6 +5,7 @@ import type {
   PriceCategory,
   PriceItem,
   Review,
+  GalleryImage,
 } from "@/lib/types";
 
 export async function getSiteSettings(): Promise<SiteSettings | null> {
@@ -48,6 +49,16 @@ export async function getReviews(): Promise<Review[]> {
     .from("reviews")
     .select("*")
     .eq("is_featured", true)
+    .order("sort_order", { ascending: true });
+  return data ?? [];
+}
+
+export async function getGalleryImages(): Promise<GalleryImage[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("gallery_images")
+    .select("*")
+    .eq("is_active", true)
     .order("sort_order", { ascending: true });
   return data ?? [];
 }
