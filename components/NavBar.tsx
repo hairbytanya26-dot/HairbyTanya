@@ -15,9 +15,9 @@ export default function NavBar({ businessName }: { businessName: string }) {
           <Image
             src="/images/logo.png"
             alt={`${businessName} logo`}
-            width={220}
-            height={220}
-            className="h-32 w-32 md:h-44 md:w-44"
+            width={480}
+            height={480}
+            className="h-56 w-56 sm:h-72 sm:w-72 md:h-96 md:w-96"
             priority
           />
         </Link>
