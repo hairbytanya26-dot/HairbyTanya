@@ -96,4 +96,7 @@ export interface Booking {
   google_event_id: string | null;
   confirmation_email_sent: boolean;
   created_at: string;
+  start_time: string;
+  end_time: string;
+  total_duration_minutes: number;
 }

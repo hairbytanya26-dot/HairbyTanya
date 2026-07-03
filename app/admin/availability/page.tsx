@@ -60,7 +60,7 @@ export default function AdminAvailabilityPage() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
-  const [slotLengthMins, setSlotLengthMins] = useState(30);
+  const [slotLengthMins, setSlotLengthMins] = useState(15);
   const [generating, setGenerating] = useState(false);
 
   async function refresh() {
@@ -139,6 +139,11 @@ export default function AdminAvailabilityPage() {
 
       <div className="mt-8 rounded-2xl bg-white/70 p-6">
         <h2 className="font-display text-xl text-mauve">Add slots for a day</h2>
+        <p className="mt-1 text-sm text-plum/70">
+          Use a <strong>15-minute slot length</strong> — your treatments (30/45/60/75/90 mins) are all
+          multiples of 15, so this lets the booking system pack appointments back-to-back accurately and
+          show the correct next available time when a longer booking is made.
+        </p>
         <div className="mt-4 flex flex-wrap items-end gap-4">
           <div>
             <label className="mb-1 block text-sm text-plum">Date</label>
@@ -217,6 +222,7 @@ export default function AdminAvailabilityPage() {
               <tr>
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Contact</th>
+                <th className="px-4 py-3">Appointment</th>
                 <th className="px-4 py-3">Service</th>
                 <th className="px-4 py-3">Notes</th>
                 <th className="px-4 py-3">Booked on</th>
@@ -230,6 +236,19 @@ export default function AdminAvailabilityPage() {
                   <td className="px-4 py-3">
                     {b.customer_email}
                     {b.customer_phone && <div className="text-xs text-plum/60">{b.customer_phone}</div>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {b.start_time ? (
+                      <>
+                        {format(new Date(b.start_time), "d MMM, h:mmaaa")}
+                        {b.end_time && <> – {format(new Date(b.end_time), "h:mmaaa")}</>}
+                        {b.total_duration_minutes && (
+                          <div className="text-xs text-plum/60">{b.total_duration_minutes} mins</div>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {b.booking_services && b.booking_services.length > 0
@@ -250,7 +269,7 @@ export default function AdminAvailabilityPage() {
               ))}
               {bookings.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-plum/60">
+                  <td colSpan={7} className="px-4 py-6 text-center text-plum/60">
                     No bookings yet.
                   </td>
                 </tr>

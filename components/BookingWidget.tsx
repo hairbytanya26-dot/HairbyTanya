@@ -21,7 +21,7 @@ export default function BookingWidget({
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const [localSlots, setLocalSlots] = useState(slots);
+  const localSlots = slots;
 
   const days = useMemo(() => {
     const grouped: { date: Date; slots: AvailabilitySlot[] }[] = [];
@@ -49,6 +49,10 @@ export default function BookingWidget({
     .filter((s) => selectedServiceIds.includes(s.id))
     .reduce((sum, s) => sum + s.price, 0);
 
+  const selectedDuration = services
+    .filter((s) => selectedServiceIds.includes(s.id))
+    .reduce((sum, s) => sum + (s.duration_minutes || 30), 0);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedSlotId) return;
@@ -64,11 +68,14 @@ export default function BookingWidget({
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 409) {
-          // Someone else took it — grey it out locally and ask them to pick again
-          setLocalSlots((prev) =>
-            prev.map((s) => (s.id === selectedSlotId ? { ...s, is_booked: true } : s))
-          );
+        if (res.status === 409 && data.suggestedStart) {
+          // The chosen time doesn't have enough free room for the selected
+          // services — offer to jump straight to the next time that fits.
+          const suggestedSlot = localSlots.find((s) => s.start_time === data.suggestedStart);
+          if (suggestedSlot) setSelectedSlotId(suggestedSlot.id);
+        } else if (res.status === 409) {
+          // A genuine race condition — someone else booked part of this
+          // window in the meantime. Ask them to pick again.
           setSelectedSlotId(null);
         }
         throw new Error(data.error || "Something went wrong. Please try again.");
@@ -169,6 +176,8 @@ export default function BookingWidget({
               {selectedServiceIds.length > 0 && (
                 <p className="mt-2 text-right font-body text-sm text-plum">
                   Estimated total: <span className="font-semibold">€{selectedTotal.toFixed(2)}</span>
+                  {" · "}
+                  Approx. <span className="font-semibold">{selectedDuration} mins</span>
                 </p>
               )}
             </div>

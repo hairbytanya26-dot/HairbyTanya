@@ -35,7 +35,27 @@ export async function POST(request: Request) {
     await deleteCalendarEvent(booking.google_event_id).catch(() => {});
   }
 
-  await supabase.from("availability_slots").update({ is_booked: false, google_event_id: null }).eq("id", booking.slot_id);
+  // A booking may span several consecutive slot rows (if it needed more
+  // than one slot's worth of time) — release every slot that falls within
+  // the booking's actual start/end range, not just the original one it
+  // was placed on.
+  const rangeStart = booking.start_time || null;
+  const rangeEnd = booking.end_time || null;
+
+  if (rangeStart && rangeEnd) {
+    await supabase
+      .from("availability_slots")
+      .update({ is_booked: false, google_event_id: null })
+      .gte("start_time", rangeStart)
+      .lt("start_time", rangeEnd);
+  } else {
+    // Fallback for any older booking made before start_time/end_time existed.
+    await supabase
+      .from("availability_slots")
+      .update({ is_booked: false, google_event_id: null })
+      .eq("id", booking.slot_id);
+  }
+
   await supabase.from("bookings").delete().eq("id", bookingId);
 
   return NextResponse.json({ success: true });
