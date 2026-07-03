@@ -28,7 +28,10 @@ function findRun(
   let cursor = fromSlot;
   const ids = [fromSlot.id];
   while (new Date(cursor.end_time).getTime() < neededEndMs) {
-    const next = slots.find((s) => s.start_time === cursor.end_time);
+    const cursorEndMs = new Date(cursor.end_time).getTime();
+    // Compare by actual instant, not raw string — Postgres and JS don't
+    // always format identical timestamps the same way character-for-character.
+    const next = slots.find((s) => new Date(s.start_time).getTime() === cursorEndMs);
     if (!next || next.is_booked) return null;
     ids.push(next.id);
     cursor = next;
@@ -49,8 +52,8 @@ function findSplitRun(
   const block1 = findRun(fromSlot, durationA, slots);
   if (!block1) return null;
 
-  const block2StartTime = new Date(new Date(block1.endTime).getTime() + GAP_MINUTES * MS_PER_MIN).toISOString();
-  const block2StartSlot = slots.find((s) => s.start_time === block2StartTime);
+  const block2StartMs = new Date(block1.endTime).getTime() + GAP_MINUTES * MS_PER_MIN;
+  const block2StartSlot = slots.find((s) => new Date(s.start_time).getTime() === block2StartMs);
   if (!block2StartSlot) return null;
 
   const block2 = findRun(block2StartSlot, durationB, slots);
