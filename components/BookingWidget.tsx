@@ -73,11 +73,10 @@ export default function BookingWidget({
           // services — offer to jump straight to the next time that fits.
           const suggestedSlot = localSlots.find((s) => s.start_time === data.suggestedStart);
           if (suggestedSlot) setSelectedSlotId(suggestedSlot.id);
-        } else if (res.status === 409) {
-          // A genuine race condition — someone else booked part of this
-          // window in the meantime. Ask them to pick again.
-          setSelectedSlotId(null);
         }
+        // Note: we deliberately never close the modal here (even on a
+        // genuine conflict with no suggestion) — closing it would hide
+        // the error message below instead of showing it to the customer.
         throw new Error(data.error || "Something went wrong. Please try again.");
       }
 
