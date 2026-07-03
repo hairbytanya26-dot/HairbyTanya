@@ -49,7 +49,7 @@ export default async function Home() {
               href="/reviews"
               className="rounded-full border-2 border-plum px-8 py-3 font-display text-plum transition-colors hover:bg-plum hover:text-blush"
             >
-              View reviews
+              Leave / View Reviews
             </Link>
           </div>
         </div>
