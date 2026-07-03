@@ -90,11 +90,17 @@ export default function BookingWidget({
 
   if (status === "success") {
     return (
-      <div className="mx-auto max-w-xl rounded-2xl bg-white/70 p-10 text-center">
-        <h2 className="font-display text-2xl text-plum">Booking confirmed ✨</h2>
-        <p className="mt-3 font-body text-plum/80">
-          A confirmation email is on its way to {email}. We can&apos;t wait to see you.
-        </p>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-plum/40 px-4 backdrop-blur-sm"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="w-full max-w-md rounded-2xl bg-blush-light p-8 text-center shadow-xl">
+          <h2 className="font-display text-2xl text-plum">Booking confirmed ✨</h2>
+          <p className="mt-3 font-body text-plum/80">
+            A confirmation email is on its way to {email}. We can&apos;t wait to see you.
+          </p>
+        </div>
       </div>
     );
   }
@@ -144,92 +150,110 @@ export default function BookingWidget({
       </div>
 
       {selectedSlot && (
-        <form onSubmit={handleSubmit} className="mt-12 space-y-4 rounded-2xl bg-white/70 p-6 md:p-8">
-          <h3 className="font-display text-xl text-plum">
-            Confirm your slot — {format(new Date(selectedSlot.start_time), "EEEE d MMMM, h:mmaaa")}
-          </h3>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-plum/40 px-4 py-8 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-booking-heading"
+        >
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-blush-light p-6 shadow-xl md:p-8">
+            <button
+              type="button"
+              onClick={() => setSelectedSlotId(null)}
+              aria-label="Close"
+              className="absolute right-4 top-4 text-plum/60 transition-colors hover:text-maroon"
+            >
+              ✕
+            </button>
 
-          {services.length > 0 && (
-            <div>
-              <label className="mb-2 block font-body text-sm text-plum">
-                Treatments (select as many as you&apos;d like)
-              </label>
-              <div className="space-y-2 rounded-2xl border border-rose bg-white p-3">
-                {services.map((s) => (
-                  <label
-                    key={s.id}
-                    className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-1.5 hover:bg-blush"
-                  >
-                    <span className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedServiceIds.includes(s.id)}
-                        onChange={() => toggleService(s.id)}
-                        className="h-4 w-4 accent-glow"
-                      />
-                      <span className="font-body text-sm text-plum">{s.name}</span>
-                    </span>
-                    <span className="font-body text-sm text-plum/70">€{s.price.toFixed(2)}</span>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <h3 id="confirm-booking-heading" className="pr-6 font-display text-xl text-plum">
+                Confirm your slot — {format(new Date(selectedSlot.start_time), "EEEE d MMMM, h:mmaaa")}
+              </h3>
+
+              {services.length > 0 && (
+                <div>
+                  <label className="mb-2 block font-body text-sm text-plum">
+                    Treatments (select as many as you&apos;d like)
                   </label>
-                ))}
+                  <div className="space-y-2 rounded-2xl border border-rose bg-white p-3">
+                    {services.map((s) => (
+                      <label
+                        key={s.id}
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-1.5 hover:bg-blush"
+                      >
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedServiceIds.includes(s.id)}
+                            onChange={() => toggleService(s.id)}
+                            className="h-4 w-4 accent-glow"
+                          />
+                          <span className="font-body text-sm text-plum">{s.name}</span>
+                        </span>
+                        <span className="font-body text-sm text-plum/70">€{s.price.toFixed(2)}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedServiceIds.length > 0 && (
+                    <p className="mt-2 text-right font-body text-sm text-plum">
+                      Estimated total: <span className="font-semibold">€{selectedTotal.toFixed(2)}</span>
+                      {" · "}
+                      Approx. <span className="font-semibold">{selectedDuration} mins</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <input
+                  type="text"
+                  required
+                  placeholder="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
+                />
+                <input
+                  type="email"
+                  required
+                  placeholder="Your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
+                />
               </div>
-              {selectedServiceIds.length > 0 && (
-                <p className="mt-2 text-right font-body text-sm text-plum">
-                  Estimated total: <span className="font-semibold">€{selectedTotal.toFixed(2)}</span>
-                  {" · "}
-                  Approx. <span className="font-semibold">{selectedDuration} mins</span>
+              <input
+                type="tel"
+                placeholder="Phone (optional)"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
+              />
+              <textarea
+                placeholder="Anything we should know? (optional)"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className="w-full rounded-2xl border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
+              />
+
+              {status === "error" && (
+                <p className="font-body text-sm text-maroon" role="alert">
+                  {errorMessage}
                 </p>
               )}
-            </div>
-          )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <input
-              type="text"
-              required
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
-            />
-            <input
-              type="email"
-              required
-              placeholder="Your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
-            />
+              <button
+                type="submit"
+                disabled={status === "loading"}
+                className="w-full rounded-full bg-plum px-6 py-3 font-display text-blush transition-colors hover:bg-glow disabled:opacity-60"
+              >
+                {status === "loading" ? "Booking…" : "Confirm booking"}
+              </button>
+            </form>
           </div>
-          <input
-            type="tel"
-            placeholder="Phone (optional)"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
-          />
-          <textarea
-            placeholder="Anything we should know? (optional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            className="w-full rounded-2xl border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
-          />
-
-          {status === "error" && (
-            <p className="font-body text-sm text-maroon" role="alert">
-              {errorMessage}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={status === "loading"}
-            className="w-full rounded-full bg-plum px-6 py-3 font-display text-blush transition-colors hover:bg-glow disabled:opacity-60"
-          >
-            {status === "loading" ? "Booking…" : "Confirm booking"}
-          </button>
-        </form>
+        </div>
       )}
     </div>
   );
