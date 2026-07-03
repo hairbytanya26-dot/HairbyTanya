@@ -6,11 +6,19 @@ import { format } from "date-fns";
 
 export async function POST(request: Request) {
   try {
-    const { slotId, serviceId, name, email, phone, notes } = await request.json();
+    const { slotId, serviceIds, name, email, phone, notes } = await request.json();
 
     if (!slotId || !name || !email) {
       return NextResponse.json({ error: "Missing required booking details." }, { status: 400 });
     }
+
+    // Accept either an array (new, multi-select form) or a single id
+    // (kept for backward compatibility with any old client code).
+    const selectedServiceIds: string[] = Array.isArray(serviceIds)
+      ? serviceIds.filter(Boolean)
+      : serviceIds
+      ? [serviceIds]
+      : [];
 
     const supabase = createAdminClient();
 
@@ -32,15 +40,15 @@ export async function POST(request: Request) {
       );
     }
 
-    let serviceName = "Appointment";
-    if (serviceId) {
-      const { data: service } = await supabase
+    let serviceNames: string[] = [];
+    if (selectedServiceIds.length > 0) {
+      const { data: services } = await supabase
         .from("price_items")
-        .select("name")
-        .eq("id", serviceId)
-        .single();
-      if (service) serviceName = service.name;
+        .select("id, name")
+        .in("id", selectedServiceIds);
+      if (services) serviceNames = services.map((s) => s.name);
     }
+    const serviceSummary = serviceNames.length > 0 ? serviceNames.join(", ") : "Appointment";
 
     // Claim the slot first (atomic-ish guard against double booking)
     const { error: claimError } = await supabase
@@ -58,8 +66,8 @@ export async function POST(request: Request) {
     try {
       googleEventId =
         (await createCalendarEvent({
-          summary: `${serviceName} — ${name}`,
-          description: `Booked via website.\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone || "—"}\nNotes: ${notes || "—"}`,
+          summary: `${serviceSummary} — ${name}`,
+          description: `Booked via website.\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone || "—"}\nServices: ${serviceSummary}\nNotes: ${notes || "—"}`,
           startTime: slot.start_time,
           endTime: slot.end_time,
           attendeeEmail: email,
@@ -74,7 +82,9 @@ export async function POST(request: Request) {
       .from("bookings")
       .insert({
         slot_id: slotId,
-        service_id: serviceId || null,
+        // service_id is kept for backward compatibility with older bookings;
+        // new bookings record their treatments in booking_services instead.
+        service_id: null,
         customer_name: name,
         customer_email: email,
         customer_phone: phone || null,
@@ -87,6 +97,15 @@ export async function POST(request: Request) {
     if (bookingError) {
       console.error("booking insert error", bookingError);
       return NextResponse.json({ error: "Could not save your booking. Please try again." }, { status: 500 });
+    }
+
+    if (selectedServiceIds.length > 0) {
+      const rows = selectedServiceIds.map((service_id) => ({ booking_id: booking.id, service_id }));
+      const { error: servicesError } = await supabase.from("booking_services").insert(rows);
+      if (servicesError) {
+        // Not fatal — the booking itself is already saved. Just log it.
+        console.error("booking_services insert error", servicesError);
+      }
     }
 
     if (googleEventId) {
@@ -104,7 +123,7 @@ export async function POST(request: Request) {
       try {
         const vars = {
           name,
-          service: serviceName,
+          service: serviceSummary,
           date: format(new Date(slot.start_time), "EEEE d MMMM yyyy"),
           time: format(new Date(slot.start_time), "h:mmaaa"),
         };

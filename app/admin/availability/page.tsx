@@ -5,9 +5,11 @@ import { createClient } from "@/lib/supabase/client";
 import type { AvailabilitySlot, Booking } from "@/lib/types";
 import { format } from "date-fns";
 
-// Booking row with the related treatment name embedded via Supabase's
-// foreign-key join (price_items.name), used only for display here.
-type BookingWithService = Booking & { price_items: { name: string } | null };
+// Booking row with all its selected treatment names embedded via the
+// booking_services join table, used only for display here.
+type BookingWithServices = Booking & {
+  booking_services: { price_items: { name: string } | null }[];
+};
 
 // Converts a wall-clock date+time as understood in Europe/Dublin into the
 // correct UTC Date, regardless of what timezone the browser/computer is
@@ -51,7 +53,7 @@ function dublinTimeToUTCDate(dateStr: string, hours: number, minutes: number): D
 export default function AdminAvailabilityPage() {
   const supabase = createClient();
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
-  const [bookings, setBookings] = useState<BookingWithService[]>([]);
+  const [bookings, setBookings] = useState<BookingWithServices[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Bulk slot generator state
@@ -70,11 +72,11 @@ export default function AdminAvailabilityPage() {
         .order("start_time"),
       supabase
         .from("bookings")
-        .select("*, price_items(name)")
+        .select("*, booking_services(price_items(name))")
         .order("created_at", { ascending: false }),
     ]);
     setSlots(slotData ?? []);
-    setBookings((bookingData as unknown as BookingWithService[]) ?? []);
+    setBookings((bookingData as unknown as BookingWithServices[]) ?? []);
     setLoading(false);
   }
 
@@ -229,7 +231,14 @@ export default function AdminAvailabilityPage() {
                     {b.customer_email}
                     {b.customer_phone && <div className="text-xs text-plum/60">{b.customer_phone}</div>}
                   </td>
-                  <td className="px-4 py-3">{b.price_items?.name || "—"}</td>
+                  <td className="px-4 py-3">
+                    {b.booking_services && b.booking_services.length > 0
+                      ? b.booking_services
+                          .map((bs) => bs.price_items?.name)
+                          .filter(Boolean)
+                          .join(", ")
+                      : "—"}
+                  </td>
                   <td className="px-4 py-3">{b.notes || "—"}</td>
                   <td className="px-4 py-3">{format(new Date(b.created_at), "d MMM yyyy")}</td>
                   <td className="px-4 py-3">

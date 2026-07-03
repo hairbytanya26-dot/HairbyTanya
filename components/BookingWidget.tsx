@@ -14,7 +14,7 @@ export default function BookingWidget({
   bookingNotice?: string;
 }) {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  const [serviceId, setServiceId] = useState("");
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -39,6 +39,16 @@ export default function BookingWidget({
 
   const selectedSlot = localSlots.find((s) => s.id === selectedSlotId);
 
+  function toggleService(id: string) {
+    setSelectedServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  }
+
+  const selectedTotal = services
+    .filter((s) => selectedServiceIds.includes(s.id))
+    .reduce((sum, s) => sum + s.price, 0);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedSlotId) return;
@@ -49,7 +59,7 @@ export default function BookingWidget({
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slotId: selectedSlotId, serviceId, name, email, phone, notes }),
+        body: JSON.stringify({ slotId: selectedSlotId, serviceIds: selectedServiceIds, name, email, phone, notes }),
       });
       const data = await res.json();
 
@@ -134,22 +144,33 @@ export default function BookingWidget({
 
           {services.length > 0 && (
             <div>
-              <label htmlFor="service" className="mb-1 block font-body text-sm text-plum">
-                Treatment
+              <label className="mb-2 block font-body text-sm text-plum">
+                Treatments (select as many as you&apos;d like)
               </label>
-              <select
-                id="service"
-                value={serviceId}
-                onChange={(e) => setServiceId(e.target.value)}
-                className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum focus:border-glow focus:outline-none"
-              >
-                <option value="">Select a treatment (optional)</option>
+              <div className="space-y-2 rounded-2xl border border-rose bg-white p-3">
                 {services.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} — €{s.price.toFixed(2)}
-                  </option>
+                  <label
+                    key={s.id}
+                    className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-1.5 hover:bg-blush"
+                  >
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedServiceIds.includes(s.id)}
+                        onChange={() => toggleService(s.id)}
+                        className="h-4 w-4 accent-glow"
+                      />
+                      <span className="font-body text-sm text-plum">{s.name}</span>
+                    </span>
+                    <span className="font-body text-sm text-plum/70">€{s.price.toFixed(2)}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
+              {selectedServiceIds.length > 0 && (
+                <p className="mt-2 text-right font-body text-sm text-plum">
+                  Estimated total: <span className="font-semibold">€{selectedTotal.toFixed(2)}</span>
+                </p>
+              )}
             </div>
           )}
 
