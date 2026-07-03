@@ -40,7 +40,7 @@ export default function AdminAvailabilityPage() {
       supabase
         .from("bookings")
         .select("*, booking_services(price_items(name))")
-        .order("created_at", { ascending: false }),
+        .order("start_time", { ascending: true }),
     ]);
 
     if (slotErr) console.error("slots fetch error", slotErr);
