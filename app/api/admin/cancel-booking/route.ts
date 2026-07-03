@@ -34,20 +34,32 @@ export async function POST(request: Request) {
   if (booking.google_event_id) {
     await deleteCalendarEvent(booking.google_event_id).catch(() => {});
   }
+  if (booking.second_event_id) {
+    await deleteCalendarEvent(booking.second_event_id).catch(() => {});
+  }
 
-  // A booking may span several consecutive slot rows (if it needed more
-  // than one slot's worth of time) — release every slot that falls within
-  // the booking's actual start/end range, not just the original one it
-  // was placed on.
-  const rangeStart = booking.start_time || null;
-  const rangeEnd = booking.end_time || null;
-
-  if (rangeStart && rangeEnd) {
+  // Release exactly the slots this booking claimed. Split bookings (colour
+  // + finishing service) leave a 30-minute gap in between that's NOT part
+  // of this booking — another customer may have legitimately booked a
+  // short appointment into that gap, so we must never release by a blanket
+  // start/end time range, only by the specific slots this booking tagged
+  // with its own calendar event id(s).
+  if (booking.google_event_id || booking.second_event_id) {
+    const eventIds = [booking.google_event_id, booking.second_event_id].filter(Boolean);
     await supabase
       .from("availability_slots")
       .update({ is_booked: false, google_event_id: null })
-      .gte("start_time", rangeStart)
-      .lt("start_time", rangeEnd);
+      .in("google_event_id", eventIds as string[]);
+  } else if (booking.start_time && booking.end_time) {
+    // Calendar sync must have failed for this booking, so slots weren't
+    // tagged with an event id — fall back to the time range (safe for
+    // ordinary non-split bookings; a split booking in this rare case
+    // would need manual review in the admin panel).
+    await supabase
+      .from("availability_slots")
+      .update({ is_booked: false, google_event_id: null })
+      .gte("start_time", booking.start_time)
+      .lt("start_time", booking.end_time);
   } else {
     // Fallback for any older booking made before start_time/end_time existed.
     await supabase
