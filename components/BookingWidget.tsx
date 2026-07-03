@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AvailabilitySlot, PriceItem } from "@/lib/types";
 import { format, isSameDay } from "date-fns";
 
@@ -38,6 +38,37 @@ export default function BookingWidget({
   }, [localSlots]);
 
   const selectedSlot = localSlots.find((s) => s.id === selectedSlotId);
+
+  // How much uninterrupted free time follows the selected slot (walking
+  // forward through consecutive, unbooked, gap-free slots). Used to grey
+  // out any treatment that simply wouldn't fit before the day closes or
+  // before the next existing booking — e.g. only a 30-min service should
+  // be selectable at the very last slot of the day.
+  const maxFitMinutes = useMemo(() => {
+    if (!selectedSlot) return 0;
+    let total = 0;
+    let cursor: AvailabilitySlot | undefined = selectedSlot;
+    while (cursor && !cursor.is_booked) {
+      total += (new Date(cursor.end_time).getTime() - new Date(cursor.start_time).getTime()) / 60000;
+      const cursorEndMs = new Date(cursor.end_time).getTime();
+      cursor = localSlots.find((s) => new Date(s.start_time).getTime() === cursorEndMs);
+    }
+    return total;
+  }, [selectedSlot, localSlots]);
+
+  // If the selected time changes and a previously-ticked treatment no
+  // longer fits, automatically un-tick it rather than leaving a stale,
+  // now-invalid selection.
+  useEffect(() => {
+    if (!selectedSlot) return;
+    setSelectedServiceIds((prev) =>
+      prev.filter((id) => {
+        const service = services.find((s) => s.id === id);
+        return service ? (service.duration_minutes || 30) <= maxFitMinutes : true;
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSlotId]);
 
   function toggleService(id: string) {
     setSelectedServiceIds((prev) =>
@@ -176,23 +207,35 @@ export default function BookingWidget({
                     Treatments (select as many as you&apos;d like)
                   </label>
                   <div className="space-y-2 rounded-2xl border border-rose bg-white p-3">
-                    {services.map((s) => (
-                      <label
-                        key={s.id}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-1.5 hover:bg-blush"
-                      >
-                        <span className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedServiceIds.includes(s.id)}
-                            onChange={() => toggleService(s.id)}
-                            className="h-4 w-4 accent-glow"
-                          />
-                          <span className="font-body text-sm text-plum">{s.name}</span>
-                        </span>
-                        <span className="font-body text-sm text-plum/70">€{s.price.toFixed(2)}</span>
-                      </label>
-                    ))}
+                    {services.map((s) => {
+                      const duration = s.duration_minutes || 30;
+                      const fits = duration <= maxFitMinutes;
+                      return (
+                        <label
+                          key={s.id}
+                          className={`flex items-center justify-between gap-3 rounded-xl px-2 py-1.5 ${
+                            fits ? "cursor-pointer hover:bg-blush" : "cursor-not-allowed opacity-40"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedServiceIds.includes(s.id)}
+                              onChange={() => toggleService(s.id)}
+                              disabled={!fits}
+                              className="h-4 w-4 accent-glow"
+                            />
+                            <span className="font-body text-sm text-plum">
+                              {s.name}
+                              {!fits && (
+                                <span className="ml-1 text-xs text-plum/60">(not enough time left today)</span>
+                              )}
+                            </span>
+                          </span>
+                          <span className="font-body text-sm text-plum/70">€{s.price.toFixed(2)}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                   {selectedServiceIds.length > 0 && (
                     <p className="mt-2 text-right font-body text-sm text-plum">
