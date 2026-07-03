@@ -3,11 +3,16 @@ import Footer from "@/components/Footer";
 import BookingWidget from "@/components/BookingWidget";
 import { getSiteSettings, getSocialLinks } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
+import { ensureSlotsGenerated } from "@/lib/autoGenerateSlots";
 
 export const revalidate = 0; // always fetch fresh slot availability
 
 export default async function BookingsPage() {
   const supabase = createClient();
+
+  // Keeps the rolling 6-week availability window topped up automatically —
+  // safe to call on every visit since it only fills genuine gaps.
+  await ensureSlotsGenerated();
 
   const [settings, socialLinks, slotsResult, servicesResult] = await Promise.all([
     getSiteSettings(),
@@ -17,7 +22,7 @@ export default async function BookingsPage() {
       .select("*")
       .gte("start_time", new Date().toISOString())
       .order("start_time", { ascending: true })
-      .limit(200),
+      .limit(1000),
     supabase.from("price_items").select("*").eq("is_active", true).order("sort_order"),
   ]);
 

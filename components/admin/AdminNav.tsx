@@ -11,6 +11,7 @@ const links = [
   { href: "/admin/pricelist", label: "Price List" },
   { href: "/admin/socials", label: "Social Links" },
   { href: "/admin/reviews", label: "Reviews" },
+  { href: "/admin/hours", label: "Working Hours" },
   { href: "/admin/availability", label: "Availability & Bookings" },
   { href: "/admin/mailing-list", label: "Mailing List" },
   { href: "/admin/emails", label: "Email Templates" },

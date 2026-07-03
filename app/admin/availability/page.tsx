@@ -4,51 +4,13 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { AvailabilitySlot, Booking } from "@/lib/types";
 import { format } from "date-fns";
+import { dublinTimeToUTCDate } from "@/lib/dublinTime";
 
 // Booking row with all its selected treatment names embedded via the
 // booking_services join table, used only for display here.
 type BookingWithServices = Booking & {
   booking_services: { price_items: { name: string } | null }[];
 };
-
-// Converts a wall-clock date+time as understood in Europe/Dublin into the
-// correct UTC Date, regardless of what timezone the browser/computer is
-// actually set to. This makes slot generation immune to a misconfigured
-// system clock on whichever computer an admin is using.
-function dublinTimeToUTCDate(dateStr: string, hours: number, minutes: number): Date {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  // First guess: treat the wall-clock time as if it were UTC.
-  const guess = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
-
-  // Ask what that instant reads as in Dublin, to find the current offset
-  // (handles Irish Summer Time automatically).
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Europe/Dublin",
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  const parts = dtf.formatToParts(guess).reduce((acc: Record<string, string>, p) => {
-    if (p.type !== "literal") acc[p.type] = p.value;
-    return acc;
-  }, {});
-  const dublinReading = Date.UTC(
-    Number(parts.year),
-    Number(parts.month) - 1,
-    Number(parts.day),
-    Number(parts.hour),
-    Number(parts.minute),
-    Number(parts.second)
-  );
-  const offsetMs = dublinReading - guess.getTime();
-
-  // Shift the guess back by however far off Dublin's reading was.
-  return new Date(guess.getTime() - offsetMs);
-}
 
 export default function AdminAvailabilityPage() {
   const supabase = createClient();
@@ -91,7 +53,7 @@ export default function AdminAvailabilityPage() {
   }
 
   useEffect(() => {
-    refresh();
+    fetch("/api/admin/ensure-slots", { method: "POST" }).finally(() => refresh());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -156,7 +118,10 @@ export default function AdminAvailabilityPage() {
       <div className="mt-8 rounded-2xl bg-white/70 p-6">
         <h2 className="font-display text-xl text-mauve">Add slots for a day</h2>
         <p className="mt-1 text-sm text-plum/70">
-          Use a <strong>15-minute slot length</strong> — your treatments (30/45/60/75/90 mins) are all
+          Your regular weekly schedule is now handled automatically from{" "}
+          <strong>Working Hours</strong> — you shouldn&apos;t need this for normal weeks. Use this only
+          for one-off adjustments, like extra availability on a day you don&apos;t normally work. Use a{" "}
+          <strong>15-minute slot length</strong> — your treatments (30/45/60/75/90 mins) are all
           multiples of 15, so this lets the booking system pack appointments back-to-back accurately and
           show the correct next available time when a longer booking is made.
         </p>
