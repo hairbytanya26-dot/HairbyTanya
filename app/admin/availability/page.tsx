@@ -63,8 +63,13 @@ export default function AdminAvailabilityPage() {
   const [slotLengthMins, setSlotLengthMins] = useState(15);
   const [generating, setGenerating] = useState(false);
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   async function refresh() {
-    const [{ data: slotData }, { data: bookingData }] = await Promise.all([
+    const [
+      { data: slotData, error: slotErr },
+      { data: bookingData, error: bookingErr },
+    ] = await Promise.all([
       supabase
         .from("availability_slots")
         .select("*")
@@ -75,6 +80,11 @@ export default function AdminAvailabilityPage() {
         .select("*, booking_services(price_items(name))")
         .order("created_at", { ascending: false }),
     ]);
+
+    if (slotErr) console.error("slots fetch error", slotErr);
+    if (bookingErr) console.error("bookings fetch error", bookingErr);
+    setFetchError(bookingErr?.message || slotErr?.message || null);
+
     setSlots(slotData ?? []);
     setBookings((bookingData as unknown as BookingWithServices[]) ?? []);
     setLoading(false);
@@ -136,6 +146,12 @@ export default function AdminAvailabilityPage() {
         Add open slots below — customers pick from these on the Bookings page, and booked ones grey out
         automatically.
       </p>
+
+      {fetchError && (
+        <p className="mt-4 rounded-xl bg-maroon/10 px-4 py-3 text-sm text-maroon" role="alert">
+          Couldn&apos;t load bookings/slots properly: {fetchError}
+        </p>
+      )}
 
       <div className="mt-8 rounded-2xl bg-white/70 p-6">
         <h2 className="font-display text-xl text-mauve">Add slots for a day</h2>
