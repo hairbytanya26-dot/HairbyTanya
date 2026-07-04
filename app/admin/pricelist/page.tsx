@@ -128,8 +128,9 @@ export default function AdminPriceListPage() {
                 .map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-1 items-center gap-2 rounded-xl bg-blush px-4 py-3 sm:grid-cols-[2fr_2fr_1fr_1fr_auto]"
+                    className="rounded-xl bg-blush px-4 py-3"
                   >
+                    <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[2fr_2fr_1fr_1fr_auto]">
                     <input
                       type="text"
                       value={item.name}
@@ -176,6 +177,23 @@ export default function AdminPriceListPage() {
                       >
                         Delete
                       </button>
+                    </div>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <label className="text-xs text-plum/70">Booking timing:</label>
+                      <select
+                        value={item.booking_group ?? ""}
+                        onChange={(e) =>
+                          updateItem(item, {
+                            booking_group: e.target.value ? (e.target.value as "first" | "second") : null,
+                          })
+                        }
+                        className="rounded-full border border-rose bg-white px-3 py-1 text-xs text-plum focus:border-glow focus:outline-none"
+                      >
+                        <option value="">Normal (no gap needed)</option>
+                        <option value="first">Goes first — needs a 30-min gap before any &quot;after gap&quot; service</option>
+                        <option value="second">Goes after the 30-min gap (e.g. a finishing/cut service)</option>
+                      </select>
                     </div>
                   </div>
                 ))}

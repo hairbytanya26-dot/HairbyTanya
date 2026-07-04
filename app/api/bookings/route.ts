@@ -7,12 +7,6 @@ import { format } from "date-fns";
 const MS_PER_MIN = 60000;
 const GAP_MINUTES = 30;
 
-// Categories that need to go FIRST, with a 30-minute processing gap
-// before any "finishing" service. Matched by category name. Anything not
-// in this set (including the finishing categories themselves, and any
-// future custom category) is treated as a finishing-group service.
-const COLOUR_CATEGORIES = new Set(["Colour Bar", "Blonde Bar", "Balayage", "Face Frame"]);
-
 type Slot = { id: string; start_time: string; end_time: string; is_booked: boolean };
 
 // Finds the contiguous, gap-free, unbooked chain of slots starting at
@@ -84,7 +78,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "That slot no longer exists." }, { status: 404 });
     }
 
-    // Work out required duration, split by colour vs finishing services.
+    // Work out required duration, split by "goes first" vs "goes after
+    // the gap" services — controlled per-item in /admin/pricelist via the
+    // booking_group field, rather than hardcoded here.
     let durationColour = 0;
     let durationFinishing = 0;
     const colourNames: string[] = [];
@@ -93,34 +89,22 @@ export async function POST(request: Request) {
     if (selectedServiceIds.length > 0) {
       const { data: services, error: servicesFetchError } = await supabase
         .from("price_items")
-        .select("id, name, duration_minutes, category_id")
+        .select("id, name, duration_minutes, booking_group")
         .in("id", selectedServiceIds);
 
       if (servicesFetchError) {
         console.error("price_items fetch error", servicesFetchError);
       }
 
-      if (services && services.length > 0) {
-        const categoryIds = Array.from(new Set(services.map((s) => s.category_id).filter(Boolean)));
-        const { data: categories, error: categoriesFetchError } = await supabase
-          .from("price_categories")
-          .select("id, name")
-          .in("id", categoryIds);
-
-        if (categoriesFetchError) {
-          console.error("price_categories fetch error", categoriesFetchError);
-        }
-
-        const categoryNameById = new Map((categories ?? []).map((c) => [c.id, c.name]));
-
+      if (services) {
         for (const s of services) {
           const dur = s.duration_minutes || 30;
-          const categoryName = s.category_id ? categoryNameById.get(s.category_id) : undefined;
-          const isColour = categoryName ? COLOUR_CATEGORIES.has(categoryName) : false;
-          if (isColour) {
+          if (s.booking_group === "first") {
             durationColour += dur;
             colourNames.push(s.name);
           } else {
+            // "second" or unset (normal, no-gap) services are both treated
+            // as the group that comes after any "first" service selected.
             durationFinishing += dur;
             finishingNames.push(s.name);
           }

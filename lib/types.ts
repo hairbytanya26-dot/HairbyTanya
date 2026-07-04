@@ -39,6 +39,7 @@ export interface PriceItem {
   duration_minutes: number | null;
   sort_order: number;
   is_active: boolean;
+  booking_group: "first" | "second" | null;
 }
 
 export interface Review {
@@ -94,6 +95,7 @@ export interface Booking {
   customer_phone: string | null;
   notes: string | null;
   google_event_id: string | null;
+  second_event_id: string | null;
   confirmation_email_sent: boolean;
   created_at: string;
   start_time: string;
