@@ -4,6 +4,12 @@ import BookingWidget from "@/components/BookingWidget";
 import { getSiteSettings, getSocialLinks } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { ensureSlotsGenerated } from "@/lib/autoGenerateSlots";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Book an Appointment",
+  description: "Book your hair appointment online with Hair by Tanya — pick a time that suits you.",
+};
 
 export const revalidate = 0; // always fetch fresh slot availability
 
@@ -14,7 +20,7 @@ export default async function BookingsPage() {
   // safe to call on every visit since it only fills genuine gaps.
   await ensureSlotsGenerated();
 
-  const [settings, socialLinks, slotsResult, servicesResult] = await Promise.all([
+  const [settings, socialLinks, slotsResult, servicesResult, categoriesResult] = await Promise.all([
     getSiteSettings(),
     getSocialLinks(),
     supabase
@@ -24,6 +30,7 @@ export default async function BookingsPage() {
       .order("start_time", { ascending: true })
       .limit(1000),
     supabase.from("price_items").select("*").eq("is_active", true).order("sort_order"),
+    supabase.from("price_categories").select("*").eq("is_active", true).order("sort_order"),
   ]);
 
   return (
@@ -40,6 +47,7 @@ export default async function BookingsPage() {
           <BookingWidget
             slots={slotsResult.data ?? []}
             services={servicesResult.data ?? []}
+            categories={categoriesResult.data ?? []}
             bookingNotice={settings?.booking_notice ?? undefined}
           />
         </div>
