@@ -30,7 +30,7 @@ export default function AdminMailingListPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "needle-and-glow-mailing-list.csv";
+    a.download = "hair-by-tanya-mailing-list.csv";
     a.click();
     URL.revokeObjectURL(url);
   }
