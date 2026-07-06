@@ -242,12 +242,17 @@ export async function POST(request: Request) {
     let googleEventId: string | null = null;
     let secondEventId: string | null = null;
 
+    const voucherLine =
+      voucherAppliedAmount && trimmedVoucherCode
+        ? `\nVoucher used: ${trimmedVoucherCode} (-€${voucherAppliedAmount.toFixed(2)})`
+        : "";
+
     try {
       if (isSplitResult) {
         googleEventId =
           (await createCalendarEvent({
             summary: `${colourNames.join(", ")} — ${name}`,
-            description: `Booked via website.\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone || "—"}\nColour service(s): ${colourNames.join(", ")}\nFollowed by a ${GAP_MINUTES}-min gap, then: ${finishingNames.join(", ")}\nNotes: ${notes || "—"}`,
+            description: `Booked via website.\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone || "—"}\nColour service(s): ${colourNames.join(", ")}\nFollowed by a ${GAP_MINUTES}-min gap, then: ${finishingNames.join(", ")}\nNotes: ${notes || "—"}${voucherLine}`,
             startTime: bookingStart,
             endTime: result.block1.endTime,
             attendeeEmail: email,
@@ -257,7 +262,7 @@ export async function POST(request: Request) {
         secondEventId =
           (await createCalendarEvent({
             summary: `${finishingNames.join(", ")} — ${name}`,
-            description: `Booked via website.\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone || "—"}\nFinishing service(s): ${finishingNames.join(", ")} (after colour processing gap)\nNotes: ${notes || "—"}`,
+            description: `Booked via website.\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone || "—"}\nFinishing service(s): ${finishingNames.join(", ")} (after colour processing gap)\nNotes: ${notes || "—"}${voucherLine}`,
             startTime: block2Start,
             endTime: result.block2.endTime,
             attendeeEmail: email,
@@ -266,7 +271,7 @@ export async function POST(request: Request) {
         googleEventId =
           (await createCalendarEvent({
             summary: `${serviceSummary} — ${name}`,
-            description: `Booked via website.\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone || "—"}\nServices: ${serviceSummary}\nDuration: ${singleDuration} mins\nNotes: ${notes || "—"}`,
+            description: `Booked via website.\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone || "—"}\nServices: ${serviceSummary}\nDuration: ${singleDuration} mins\nNotes: ${notes || "—"}${voucherLine}`,
             startTime: bookingStart,
             endTime: bookingEnd,
             attendeeEmail: email,

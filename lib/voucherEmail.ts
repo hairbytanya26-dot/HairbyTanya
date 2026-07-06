@@ -26,21 +26,10 @@ export function buildVoucherEmailHtml({
 <div style="background:#F7E9E4; padding:24px; font-family: Georgia, 'Times New Roman', serif;">
   <table role="presentation" width="100%" style="max-width:600px; margin:0 auto; background:#F7E9E4; border:2px solid #B97662; border-radius:4px;" cellpadding="0" cellspacing="0">
     <tr>
-      <td style="padding:32px 32px 8px 32px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="vertical-align:top;">
-              <div style="font-size:28px; letter-spacing:4px; color:#2B2B2B; font-weight:bold;">GIFT</div>
-              <div style="font-size:32px; color:#B97662; font-style:italic; font-family: 'Brush Script MT', cursive; margin-top:-6px;">Voucher</div>
-              <div style="font-size:12px; letter-spacing:2px; color:#B97662; margin-top:8px;">A SPECIAL GIFT FOR YOU</div>
-            </td>
-            <td style="vertical-align:top; text-align:right;">
-              <div style="font-size:20px; letter-spacing:2px; color:#2B2B2B; font-weight:bold;">HAIR</div>
-              <div style="font-size:10px; letter-spacing:2px; color:#B97662;">BY</div>
-              <div style="font-size:22px; color:#B97662; font-style:italic; font-family: 'Brush Script MT', cursive;">Tanya</div>
-            </td>
-          </tr>
-        </table>
+      <td style="padding:32px 32px 8px 32px; text-align:center;">
+        <div style="font-size:30px; letter-spacing:4px; color:#2B2B2B; font-weight:bold;">GIFT</div>
+        <div style="font-size:34px; color:#B97662; font-style:italic; font-family: 'Brush Script MT', cursive; margin-top:-6px;">Voucher</div>
+        <div style="font-size:12px; letter-spacing:2px; color:#B97662; margin-top:8px;">A SPECIAL GIFT FOR YOU — HAIR BY TANYA</div>
       </td>
     </tr>
     <tr>
@@ -75,7 +64,7 @@ export function buildVoucherEmailHtml({
         <table role="presentation" width="100%" style="background:#B97662; margin-top:16px;" cellpadding="0" cellspacing="0">
           <tr>
             <td style="padding:14px 32px; text-align:center; color:#FCF4F1; font-size:13px;">
-              ${siteUrl}${phone ? `&nbsp;&nbsp;&bull;&nbsp;&nbsp;${phone}` : ""}${instagramHandle ? `&nbsp;&nbsp;&bull;&nbsp;&nbsp;${instagramHandle}` : ""}
+              &#127760;&nbsp;${siteUrl}${phone ? `&nbsp;&nbsp;&bull;&nbsp;&nbsp;&#128241;&nbsp;${phone}` : ""}${instagramHandle ? `&nbsp;&nbsp;&bull;&nbsp;&nbsp;<img src="https://hairbytanyam.com/images/icon-instagram.png" alt="Instagram" width="14" style="display:inline-block; vertical-align:middle; width:14px; height:14px;" />&nbsp;${instagramHandle}` : ""}
             </td>
           </tr>
         </table>

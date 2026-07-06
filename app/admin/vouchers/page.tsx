@@ -57,6 +57,14 @@ export default function AdminVouchersPage() {
     refresh();
   }
 
+  async function markFullyUsed(voucher: GiftVoucher) {
+    if (!confirm(`Mark this voucher (€${voucher.balance.toFixed(2)} remaining) as fully used?`)) return;
+    setRedeemingId(voucher.id);
+    await supabase.from("gift_vouchers").update({ balance: 0 }).eq("id", voucher.id);
+    setRedeemingId(null);
+    refresh();
+  }
+
   if (loading) return <p className="text-plum/70">Loading…</p>;
 
   return (
@@ -107,28 +115,40 @@ export default function AdminVouchersPage() {
                 <td className="px-4 py-3">€{v.amount.toFixed(2)}</td>
                 <td className="px-4 py-3 font-semibold">
                   €{v.balance.toFixed(2)}
-                  {v.balance <= 0 && <span className="ml-1 text-xs text-plum/50">(used up)</span>}
+                  {v.balance <= 0 && <span className="ml-1 text-xs text-plum/50">(expired)</span>}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs">{v.code}</td>
                 <td className="px-4 py-3">{format(new Date(v.purchased_at), "d MMM yyyy")}</td>
                 <td className="px-4 py-3">
                   {v.balance > 0 ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="€ amount"
-                        value={redeemAmounts[v.id] ?? ""}
-                        onChange={(e) => setRedeemAmounts((prev) => ({ ...prev, [v.id]: e.target.value }))}
-                        className="w-24 rounded-full border border-rose bg-white px-3 py-1 text-xs text-plum"
-                      />
-                      <button
-                        onClick={() => redeemInPerson(v)}
-                        disabled={redeemingId === v.id}
-                        className="rounded-full bg-plum px-3 py-1 text-xs text-blush transition-colors hover:bg-glow disabled:opacity-60"
-                      >
-                        Redeem
-                      </button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="€ amount"
+                          value={redeemAmounts[v.id] ?? ""}
+                          onChange={(e) => setRedeemAmounts((prev) => ({ ...prev, [v.id]: e.target.value }))}
+                          className="w-24 rounded-full border border-rose bg-white px-3 py-1 text-xs text-plum"
+                        />
+                        <button
+                          onClick={() => redeemInPerson(v)}
+                          disabled={redeemingId === v.id}
+                          className="rounded-full bg-plum px-3 py-1 text-xs text-blush transition-colors hover:bg-glow disabled:opacity-60"
+                        >
+                          Redeem amount
+                        </button>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-plum">
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          disabled={redeemingId === v.id}
+                          onChange={() => markFullyUsed(v)}
+                          className="h-4 w-4 accent-glow"
+                        />
+                        Tick to mark fully used
+                      </label>
                     </div>
                   ) : (
                     <span className="text-xs text-plum/50">—</span>
