@@ -12,6 +12,7 @@ export interface SiteSettings {
   contact_email: string;
   contact_phone: string | null;
   address: string | null;
+  gift_vouchers_enabled: boolean;
 }
 
 export interface SocialLink {
@@ -86,6 +87,19 @@ export interface GalleryImage {
   created_at: string;
 }
 
+export interface GiftVoucher {
+  id: string;
+  code: string;
+  amount: number;
+  balance: number;
+  buyer_name: string;
+  buyer_email: string;
+  recipient_name: string | null;
+  recipient_email: string | null;
+  sumup_checkout_id: string | null;
+  purchased_at: string;
+}
+
 export interface Booking {
   id: string;
   slot_id: string;
@@ -101,4 +115,7 @@ export interface Booking {
   start_time: string;
   end_time: string;
   total_duration_minutes: number;
+  total_price: number | null;
+  voucher_code_used: string | null;
+  voucher_amount_applied: number | null;
 }

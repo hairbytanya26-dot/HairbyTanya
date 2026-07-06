@@ -58,7 +58,7 @@ function findSplitRun(
 
 export async function POST(request: Request) {
   try {
-    const { slotId, serviceIds, name, email, phone, notes } = await request.json();
+    const { slotId, serviceIds, name, email, phone, notes, voucherCode } = await request.json();
 
     if (!slotId || !name || !email) {
       return NextResponse.json({ error: "Missing required booking details." }, { status: 400 });
@@ -83,13 +83,14 @@ export async function POST(request: Request) {
     // booking_group field, rather than hardcoded here.
     let durationColour = 0;
     let durationFinishing = 0;
+    let totalPrice = 0;
     const colourNames: string[] = [];
     const finishingNames: string[] = [];
 
     if (selectedServiceIds.length > 0) {
       const { data: services, error: servicesFetchError } = await supabase
         .from("price_items")
-        .select("id, name, duration_minutes, booking_group")
+        .select("id, name, duration_minutes, booking_group, price")
         .in("id", selectedServiceIds);
 
       if (servicesFetchError) {
@@ -99,6 +100,7 @@ export async function POST(request: Request) {
       if (services) {
         for (const s of services) {
           const dur = s.duration_minutes || 30;
+          totalPrice += s.price || 0;
           if (s.booking_group === "first") {
             durationColour += dur;
             colourNames.push(s.name);
@@ -195,6 +197,46 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate and apply a gift voucher, if one was entered. Done before
+    // creating calendar events so an invalid code fails fast without
+    // leaving orphaned calendar entries behind.
+    let voucherAppliedAmount: number | null = null;
+    let voucherRow: { id: string; balance: number } | null = null;
+    const trimmedVoucherCode = typeof voucherCode === "string" ? voucherCode.trim().toUpperCase() : "";
+
+    if (trimmedVoucherCode) {
+      const { data: foundVoucher } = await supabase
+        .from("gift_vouchers")
+        .select("id, balance")
+        .eq("code", trimmedVoucherCode)
+        .single();
+
+      if (!foundVoucher || foundVoucher.balance <= 0) {
+        await supabase.from("availability_slots").update({ is_booked: false }).in("id", claimIds);
+        return NextResponse.json(
+          { error: "That voucher code isn't valid or has no balance remaining. Please check it and try again." },
+          { status: 400 }
+        );
+      }
+
+      voucherRow = foundVoucher;
+      voucherAppliedAmount = Math.min(foundVoucher.balance, totalPrice || foundVoucher.balance);
+
+      const { error: voucherDeductError } = await supabase
+        .from("gift_vouchers")
+        .update({ balance: foundVoucher.balance - voucherAppliedAmount })
+        .eq("id", foundVoucher.id);
+
+      if (voucherDeductError) {
+        console.error("voucher deduction error", voucherDeductError);
+        await supabase.from("availability_slots").update({ is_booked: false }).in("id", claimIds);
+        return NextResponse.json(
+          { error: "Could not apply that voucher. Please try again." },
+          { status: 500 }
+        );
+      }
+    }
+
     // Push to Google Calendar — two separate events for a split booking
     // (so the gap visibly shows as free on the calendar), one otherwise.
     let googleEventId: string | null = null;
@@ -242,6 +284,9 @@ export async function POST(request: Request) {
         start_time: bookingStart,
         end_time: bookingEnd,
         total_duration_minutes: (new Date(bookingEnd).getTime() - new Date(bookingStart).getTime()) / MS_PER_MIN,
+        total_price: totalPrice || null,
+        voucher_code_used: trimmedVoucherCode || null,
+        voucher_amount_applied: voucherAppliedAmount,
         customer_name: name,
         customer_email: email,
         customer_phone: phone || null,
@@ -257,6 +302,13 @@ export async function POST(request: Request) {
       await supabase.from("availability_slots").update({ is_booked: false }).in("id", claimIds);
       if (googleEventId) await deleteCalendarEvent(googleEventId).catch(() => {});
       if (secondEventId) await deleteCalendarEvent(secondEventId).catch(() => {});
+      if (voucherRow && voucherAppliedAmount) {
+        // Restore the voucher balance since the booking didn't actually save.
+        await supabase
+          .from("gift_vouchers")
+          .update({ balance: voucherRow.balance })
+          .eq("id", voucherRow.id);
+      }
       return NextResponse.json(
         {
           error: "Could not save your booking. Please try again, or contact us directly.",
@@ -313,7 +365,11 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, bookingId: booking.id });
+    return NextResponse.json({
+      success: true,
+      bookingId: booking.id,
+      voucherApplied: voucherAppliedAmount,
+    });
   } catch (err) {
     console.error("bookings route error", err);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });

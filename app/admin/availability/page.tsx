@@ -239,7 +239,14 @@ export default function AdminAvailabilityPage() {
                           .join(", ")
                       : "—"}
                   </td>
-                  <td className="px-4 py-3">{b.notes || "—"}</td>
+                  <td className="px-4 py-3">
+                    {b.notes || "—"}
+                    {b.voucher_code_used && (
+                      <div className="mt-1 text-xs text-glow">
+                        Voucher {b.voucher_code_used}: €{b.voucher_amount_applied?.toFixed(2)} applied
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{format(new Date(b.created_at), "d MMM yyyy")}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => cancelBooking(b.id)} className="text-xs text-maroon hover:underline">

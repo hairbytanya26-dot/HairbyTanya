@@ -51,6 +51,12 @@ export default async function Home() {
             >
               Leave / View Reviews
             </Link>
+            <Link
+              href="/gift-vouchers"
+              className="rounded-full border-2 border-plum px-8 py-3 font-display text-plum transition-colors hover:bg-plum hover:text-blush"
+            >
+              Buy a Gift Voucher
+            </Link>
           </div>
         </div>
       </section>

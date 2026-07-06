@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { SiteSettings } from "@/lib/types";
 
-const FIELDS: { key: keyof SiteSettings; label: string; textarea?: boolean }[] = [
+const FIELDS: { key: keyof Omit<SiteSettings, "id" | "gift_vouchers_enabled">; label: string; textarea?: boolean }[] = [
   { key: "business_name", label: "Business name" },
   { key: "hero_kicker", label: "Hero kicker (small text above title, e.g. 'xoxo')" },
   { key: "hero_title", label: "Hero title" },

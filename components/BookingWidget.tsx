@@ -21,8 +21,10 @@ export default function BookingWidget({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [voucherCode, setVoucherCode] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [voucherApplied, setVoucherApplied] = useState<number | null>(null);
   const localSlots = slots;
 
   const days = useMemo(() => {
@@ -96,7 +98,15 @@ export default function BookingWidget({
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slotId: selectedSlotId, serviceIds: selectedServiceIds, name, email, phone, notes }),
+        body: JSON.stringify({
+          slotId: selectedSlotId,
+          serviceIds: selectedServiceIds,
+          name,
+          email,
+          phone,
+          notes,
+          voucherCode: voucherCode || undefined,
+        }),
       });
       const data = await res.json();
 
@@ -113,6 +123,7 @@ export default function BookingWidget({
         throw new Error(data.error || "Something went wrong. Please try again.");
       }
 
+      setVoucherApplied(data.voucherApplied ?? null);
       setStatus("success");
     } catch (err) {
       setStatus("error");
@@ -132,6 +143,11 @@ export default function BookingWidget({
           <p className="mt-3 font-body text-plum/80">
             A confirmation email is on its way to {email}. We can&apos;t wait to see you.
           </p>
+          {voucherApplied != null && voucherApplied > 0 && (
+            <p className="mt-3 font-body text-sm text-plum/70">
+              €{voucherApplied.toFixed(2)} from your gift voucher was applied to this booking.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -293,6 +309,13 @@ export default function BookingWidget({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 className="w-full rounded-2xl border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Gift voucher code (optional)"
+                value={voucherCode}
+                onChange={(e) => setVoucherCode(e.target.value)}
+                className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body uppercase text-plum placeholder:text-plum/40 placeholder:normal-case focus:border-glow focus:outline-none"
               />
 
               {status === "error" && (
