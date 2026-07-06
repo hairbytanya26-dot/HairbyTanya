@@ -64,6 +64,7 @@ export async function POST(request: Request) {
         amount: amountNum,
         reference: pendingOrder.id,
         redirectUrl: `${origin}/gift-vouchers/complete?order=${pendingOrder.id}`,
+        webhookUrl: `${origin}/api/gift-vouchers/sumup-webhook`,
         description: `Hair by Tanya Gift Voucher - €${amountNum.toFixed(2)}`,
       });
     } catch (sumupError) {

@@ -11,11 +11,13 @@ export async function createSumUpCheckout({
   amount,
   reference,
   redirectUrl,
+  webhookUrl,
   description,
 }: {
   amount: number;
   reference: string;
   redirectUrl: string;
+  webhookUrl: string;
   description: string;
 }): Promise<{ checkoutId: string; hostedCheckoutUrl: string }> {
   const res = await fetch(`${SUMUP_API_BASE}/checkouts`, {
@@ -31,6 +33,7 @@ export async function createSumUpCheckout({
       merchant_code: process.env.SUMUP_MERCHANT_CODE,
       description,
       redirect_url: redirectUrl,
+      return_url: webhookUrl,
       hosted_checkout: { enabled: true },
     }),
   });

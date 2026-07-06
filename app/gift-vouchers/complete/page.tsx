@@ -3,9 +3,7 @@ import Footer from "@/components/Footer";
 import { getSiteSettings, getSocialLinks } from "@/lib/data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSumUpCheckoutStatus } from "@/lib/sumup";
-import { generateUniqueVoucherCode } from "@/lib/generateVoucherCode";
-import { buildVoucherEmailHtml } from "@/lib/voucherEmail";
-import { sendEmail } from "@/lib/email";
+import { issueGiftVoucherForPaidCheckout } from "@/lib/issueGiftVoucher";
 import Link from "next/link";
 
 export const revalidate = 0;
@@ -31,85 +29,17 @@ export default async function GiftVoucherCompletePage({
       .single();
 
     if (pendingOrder) {
-      if (pendingOrder.completed) {
-        // Already processed (e.g. the customer refreshed this page) —
-        // look up the voucher that was already issued for it instead of
-        // creating a second one.
-        const { data: existingVoucher } = await supabase
-          .from("gift_vouchers")
-          .select("code, amount")
-          .eq("sumup_checkout_id", pendingOrder.sumup_checkout_id)
-          .single();
-
-        if (existingVoucher) {
-          outcome = "issued";
-          voucherCode = existingVoucher.code;
-          voucherAmount = existingVoucher.amount;
-        }
-      } else if (pendingOrder.sumup_checkout_id) {
+      if (pendingOrder.sumup_checkout_id) {
         try {
           const { isPaid } = await getSumUpCheckoutStatus(pendingOrder.sumup_checkout_id);
 
           if (isPaid) {
-            const code = await generateUniqueVoucherCode();
+            const issueResult = await issueGiftVoucherForPaidCheckout(pendingOrder.sumup_checkout_id);
 
-            const { error: voucherInsertError } = await supabase.from("gift_vouchers").insert({
-              code,
-              amount: pendingOrder.amount,
-              balance: pendingOrder.amount,
-              buyer_name: pendingOrder.buyer_name,
-              buyer_email: pendingOrder.buyer_email,
-              recipient_name: pendingOrder.recipient_name,
-              recipient_email: pendingOrder.recipient_email,
-              sumup_checkout_id: pendingOrder.sumup_checkout_id,
-            });
-
-            if (!voucherInsertError) {
-              await supabase
-                .from("voucher_pending_orders")
-                .update({ completed: true })
-                .eq("id", pendingOrder.id);
-
+            if (issueResult.outcome === "issued") {
               outcome = "issued";
-              voucherCode = code;
-              voucherAmount = pendingOrder.amount;
-
-              // Send the voucher email — to the buyer, and to the
-              // recipient too if a different email was given.
-              const instagramLink = socialLinks.find((s) => s.icon_key === "instagram");
-              const emailHtml = buildVoucherEmailHtml({
-                amount: pendingOrder.amount,
-                buyerName: pendingOrder.buyer_name,
-                recipientName: pendingOrder.recipient_name,
-                code,
-                siteUrl: "hairbytanyam.com",
-                phone: settings?.contact_phone,
-                instagramHandle: instagramLink?.platform,
-              });
-
-              try {
-                await sendEmail({
-                  to: pendingOrder.buyer_email,
-                  subject: "Your Hair by Tanya Gift Voucher",
-                  html: emailHtml,
-                });
-                if (
-                  pendingOrder.recipient_email &&
-                  pendingOrder.recipient_email !== pendingOrder.buyer_email
-                ) {
-                  await sendEmail({
-                    to: pendingOrder.recipient_email,
-                    subject: `${pendingOrder.buyer_name} sent you a Hair by Tanya Gift Voucher!`,
-                    html: emailHtml,
-                  });
-                }
-              } catch (emailError) {
-                console.error("voucher email send error", emailError);
-                // The voucher is still valid and recorded even if the
-                // email fails to send — worth checking admin panel.
-              }
-            } else {
-              console.error("gift_vouchers insert error", voucherInsertError);
+              voucherCode = issueResult.code;
+              voucherAmount = issueResult.amount;
             }
           } else {
             outcome = "not_paid";

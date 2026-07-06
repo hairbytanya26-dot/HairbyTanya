@@ -55,3 +55,9 @@ create policy "admin manage voucher_pending_orders" on voucher_pending_orders
 -- server-side API routes using the service-role key (bypassing RLS
 -- safely), the same pattern already used for bookings — never directly
 -- from the browser with the anon key.
+
+-- Prevent the same SumUp checkout from issuing more than one voucher,
+-- especially if the webhook and customer return page are processed together.
+create unique index if not exists gift_vouchers_sumup_checkout_id_unique
+  on gift_vouchers (sumup_checkout_id)
+  where sumup_checkout_id is not null;
