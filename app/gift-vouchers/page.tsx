@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Gift Vouchers",
-  description: "Buy a Hair by Tanya gift voucher — the perfect gift for cuts, colour, and styling.",
+  description: "Buy a Hair by Tanya gift voucher. The perfect gift for cuts, colour, and styling.",
 };
 
 export const revalidate = 0;
@@ -24,7 +24,7 @@ export default async function GiftVouchersPage() {
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="font-display text-4xl text-plum md:text-5xl">Gift Vouchers</h1>
           <p className="mt-4 font-body text-plum/80">
-            The perfect gift — redeemable against any treatment.
+            The perfect gift, redeemable against any treatment.
           </p>
         </div>
 
@@ -33,7 +33,7 @@ export default async function GiftVouchersPage() {
             <GiftVoucherForm />
           ) : (
             <p className="mx-auto max-w-xl rounded-2xl bg-white/70 p-6 text-center font-body text-plum/70">
-              Gift vouchers aren&apos;t available to buy online right now — please contact us directly if
+              Gift vouchers aren&apos;t available to buy online right now, please contact us directly if
               you&apos;d like one.
             </p>
           )}
