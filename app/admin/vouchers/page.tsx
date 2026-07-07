@@ -14,6 +14,13 @@ export default function AdminVouchersPage() {
   const [redeemAmounts, setRedeemAmounts] = useState<Record<string, string>>({});
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
 
+  const [newAmount, setNewAmount] = useState("");
+  const [newBuyerName, setNewBuyerName] = useState("");
+  const [newBuyerEmail, setNewBuyerEmail] = useState("");
+  const [newRecipientName, setNewRecipientName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+
   async function refresh() {
     const [{ data: voucherData }, { data: settingsData }] = await Promise.all([
       supabase.from("gift_vouchers").select("*").order("purchased_at", { ascending: false }),
@@ -65,6 +72,47 @@ export default function AdminVouchersPage() {
     refresh();
   }
 
+  async function createVoucherManually(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateError("");
+
+    const amountNum = parseFloat(newAmount);
+    if (!amountNum || amountNum <= 0) {
+      setCreateError("Enter a valid amount.");
+      return;
+    }
+    if (!newBuyerName.trim()) {
+      setCreateError("Enter a name for this voucher.");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const res = await fetch("/api/admin/create-voucher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amountNum,
+          buyerName: newBuyerName,
+          buyerEmail: newBuyerEmail || undefined,
+          recipientName: newRecipientName || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not create the voucher.");
+
+      setNewAmount("");
+      setNewBuyerName("");
+      setNewBuyerEmail("");
+      setNewRecipientName("");
+      refresh();
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   if (loading) return <p className="text-plum/70">Loading…</p>;
 
   return (
@@ -86,6 +134,58 @@ export default function AdminVouchersPage() {
           />
           Gift vouchers available for purchase on the website
         </label>
+      </div>
+
+      <div className="mt-6 rounded-2xl bg-white/70 p-6">
+        <h2 className="font-display text-xl text-mauve">Add a voucher manually</h2>
+        <p className="mt-1 text-sm text-plum/70">
+          For cash sales, gestures of goodwill, or anything sold outside the website — any amount is
+          fine, it doesn&apos;t need to be a round number.
+        </p>
+        <form onSubmit={createVoucherManually} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            placeholder="Amount (€)"
+            value={newAmount}
+            onChange={(e) => setNewAmount(e.target.value)}
+            className="rounded-full border border-rose bg-white px-4 py-2 text-sm text-plum focus:border-glow focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Name"
+            value={newBuyerName}
+            onChange={(e) => setNewBuyerName(e.target.value)}
+            className="rounded-full border border-rose bg-white px-4 py-2 text-sm text-plum focus:border-glow focus:outline-none"
+          />
+          <input
+            type="email"
+            placeholder="Email (optional)"
+            value={newBuyerEmail}
+            onChange={(e) => setNewBuyerEmail(e.target.value)}
+            className="rounded-full border border-rose bg-white px-4 py-2 text-sm text-plum focus:border-glow focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="This is a gift for... (optional)"
+            value={newRecipientName}
+            onChange={(e) => setNewRecipientName(e.target.value)}
+            className="rounded-full border border-rose bg-white px-4 py-2 text-sm text-plum focus:border-glow focus:outline-none"
+          />
+          {createError && (
+            <p className="sm:col-span-2 text-sm text-maroon" role="alert">
+              {createError}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={creating}
+            className="sm:col-span-2 rounded-full bg-plum px-6 py-2.5 font-display text-blush transition-colors hover:bg-glow disabled:opacity-60"
+          >
+            {creating ? "Creating…" : "Create voucher"}
+          </button>
+        </form>
       </div>
 
       <div className="mt-8 overflow-x-auto rounded-2xl bg-white/70">

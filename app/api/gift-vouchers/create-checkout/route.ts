@@ -14,8 +14,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
     }
     const amountNum = Number(amount);
-    if (!Number.isFinite(amountNum) || amountNum <= 0 || amountNum % 25 !== 0) {
-      return NextResponse.json({ error: "Voucher amount must be a multiple of €25." }, { status: 400 });
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      return NextResponse.json({ error: "Please enter a valid voucher amount." }, { status: 400 });
     }
     if (amountNum > 1000) {
       return NextResponse.json({ error: "For amounts over €1000, please contact us directly." }, { status: 400 });

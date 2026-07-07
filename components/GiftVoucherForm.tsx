@@ -73,14 +73,14 @@ export default function GiftVoucherForm() {
         </div>
         <div className="mt-3">
           <label htmlFor="custom-amount" className="mb-1 block font-body text-xs text-plum/70">
-            Or enter a custom amount (must be a multiple of €25)
+            Or enter any custom amount
           </label>
           <input
             id="custom-amount"
             type="number"
-            step={25}
-            min={25}
-            placeholder="e.g. 225"
+            step={1}
+            min={1}
+            placeholder="e.g. 60"
             value={customAmount}
             onChange={(e) => setCustomAmount(e.target.value)}
             className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
@@ -139,7 +139,7 @@ export default function GiftVoucherForm() {
 
       <button
         type="submit"
-        disabled={status === "loading" || effectiveAmount <= 0 || effectiveAmount % 25 !== 0}
+        disabled={status === "loading" || effectiveAmount <= 0}
         className="w-full rounded-full bg-plum px-6 py-3 font-display text-blush transition-colors hover:bg-glow disabled:opacity-60"
       >
         {status === "loading" ? "Redirecting to payment…" : `Buy Voucher — €${effectiveAmount || 0}`}
