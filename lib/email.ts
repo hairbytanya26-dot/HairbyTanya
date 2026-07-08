@@ -1,16 +1,10 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-// Uses Gmail SMTP with an "app password" (see README for setup steps).
-// To later migrate to a transactional provider like Resend, this is the
-// only file that needs to change — everything else calls sendEmail().
-function getTransporter() {
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-  });
+// Uses Resend for transactional email (see README for setup steps).
+// This is the only file that talks to the email provider — everything
+// else in the app calls sendEmail().
+function getClient() {
+  return new Resend(process.env.RESEND_API_KEY);
 }
 
 export function fillTemplate(template: string, vars: Record<string, string>) {
@@ -29,13 +23,18 @@ export async function sendEmail({
   subject: string;
   html: string;
 }) {
-  const transporter = getTransporter();
-  const fromName = process.env.GMAIL_FROM_NAME || "Hair by Tanya";
+  const resend = getClient();
+  const fromName = process.env.EMAIL_FROM_NAME || "Hair by Tanya";
+  const fromAddress = process.env.EMAIL_FROM_ADDRESS || "onboarding@resend.dev";
 
-  await transporter.sendMail({
-    from: `"${fromName}" <${process.env.GMAIL_USER}>`,
+  const { error } = await resend.emails.send({
+    from: `${fromName} <${fromAddress}>`,
     to,
     subject,
     html,
   });
+
+  if (error) {
+    throw new Error(typeof error === "string" ? error : JSON.stringify(error));
+  }
 }

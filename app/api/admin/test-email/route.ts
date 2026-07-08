@@ -14,16 +14,16 @@ export async function POST(request: Request) {
   }
 
   const { to } = await request.json();
-  const recipient = to || process.env.GMAIL_USER;
+  const recipient = to;
 
   if (!recipient) {
-    return NextResponse.json({ error: "No recipient email provided or configured." }, { status: 400 });
+    return NextResponse.json({ error: "No recipient email provided." }, { status: 400 });
   }
 
   const envCheck = {
-    GMAIL_USER: process.env.GMAIL_USER ? `set (${process.env.GMAIL_USER})` : "MISSING",
-    GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? "set (hidden)" : "MISSING",
-    GMAIL_FROM_NAME: process.env.GMAIL_FROM_NAME || "not set (will default to 'Hair by Tanya')",
+    RESEND_API_KEY: process.env.RESEND_API_KEY ? "set (hidden)" : "MISSING",
+    EMAIL_FROM_ADDRESS: process.env.EMAIL_FROM_ADDRESS || "not set (will default to onboarding@resend.dev)",
+    EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || "not set (will default to 'Hair by Tanya')",
   };
 
   try {
