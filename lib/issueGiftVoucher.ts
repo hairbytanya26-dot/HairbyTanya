@@ -8,18 +8,15 @@ type IssueResult =
   | { outcome: "issued"; code: string; amount: number; alreadyIssued: boolean }
   | { outcome: "not_found" | "not_paid" | "error"; error?: unknown };
 
-type PendingOrder = {
-  id: string;
+export type VoucherEmailRecipientInfo = {
   amount: number;
   buyer_name: string;
   buyer_email: string;
   recipient_name: string | null;
   recipient_email: string | null;
-  sumup_checkout_id: string | null;
-  completed: boolean;
 };
 
-async function sendVoucherEmails(pendingOrder: PendingOrder, code: string) {
+export async function sendVoucherEmails(pendingOrder: VoucherEmailRecipientInfo, code: string) {
   const [settings, socialLinks] = await Promise.all([getSiteSettings(), getSocialLinks()]);
   const instagramLink = socialLinks.find((s) => s.icon_key === "instagram");
 

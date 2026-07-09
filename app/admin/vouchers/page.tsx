@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { GiftVoucher } from "@/lib/types";
+import type { GiftVoucher, GiftVoucherPreset } from "@/lib/types";
 import { format } from "date-fns";
 
 export default function AdminVouchersPage() {
   const supabase = createClient();
   const [vouchers, setVouchers] = useState<GiftVoucher[]>([]);
+  const [presets, setPresets] = useState<GiftVoucherPreset[]>([]);
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savingToggle, setSavingToggle] = useState(false);
   const [redeemAmounts, setRedeemAmounts] = useState<Record<string, string>>({});
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
+  const [presetEdits, setPresetEdits] = useState<Record<string, string>>({});
+  const [newPresetAmount, setNewPresetAmount] = useState("");
+  const [savingPreset, setSavingPreset] = useState<string | null>(null);
 
   const [newAmount, setNewAmount] = useState("");
   const [newBuyerName, setNewBuyerName] = useState("");
@@ -20,14 +24,18 @@ export default function AdminVouchersPage() {
   const [newRecipientName, setNewRecipientName] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [createSuccessMsg, setCreateSuccessMsg] = useState("");
 
   async function refresh() {
-    const [{ data: voucherData }, { data: settingsData }] = await Promise.all([
+    const [{ data: voucherData }, { data: settingsData }, { data: presetData }] = await Promise.all([
       supabase.from("gift_vouchers").select("*").order("purchased_at", { ascending: false }),
       supabase.from("site_settings").select("gift_vouchers_enabled").eq("id", 1).single(),
+      supabase.from("gift_voucher_presets").select("*").order("sort_order"),
     ]);
     setVouchers(voucherData ?? []);
     setEnabled(settingsData?.gift_vouchers_enabled ?? true);
+    setPresets(presetData ?? []);
+    setPresetEdits(Object.fromEntries((presetData ?? []).map((p) => [p.id, String(p.amount)])));
     setLoading(false);
   }
 
@@ -72,9 +80,46 @@ export default function AdminVouchersPage() {
     refresh();
   }
 
+  async function addPreset() {
+    const amountNum = parseFloat(newPresetAmount);
+    if (!amountNum || amountNum <= 0) {
+      alert("Enter a valid amount.");
+      return;
+    }
+    setSavingPreset("new");
+    await supabase.from("gift_voucher_presets").insert({
+      amount: amountNum,
+      sort_order: presets.length,
+    });
+    setNewPresetAmount("");
+    setSavingPreset(null);
+    refresh();
+  }
+
+  async function savePresetEdit(preset: GiftVoucherPreset) {
+    const amountNum = parseFloat(presetEdits[preset.id]);
+    if (!amountNum || amountNum <= 0) {
+      alert("Enter a valid amount.");
+      return;
+    }
+    setSavingPreset(preset.id);
+    await supabase.from("gift_voucher_presets").update({ amount: amountNum }).eq("id", preset.id);
+    setSavingPreset(null);
+    refresh();
+  }
+
+  async function deletePreset(preset: GiftVoucherPreset) {
+    if (!confirm(`Remove the €${preset.amount} preset? Customers won't see this button anymore.`)) return;
+    setSavingPreset(preset.id);
+    await supabase.from("gift_voucher_presets").delete().eq("id", preset.id);
+    setSavingPreset(null);
+    refresh();
+  }
+
   async function createVoucherManually(e: React.FormEvent) {
     e.preventDefault();
     setCreateError("");
+    setCreateSuccessMsg("");
 
     const amountNum = parseFloat(newAmount);
     if (!amountNum || amountNum <= 0) {
@@ -101,6 +146,14 @@ export default function AdminVouchersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not create the voucher.");
 
+      setCreateSuccessMsg(
+        newBuyerEmail
+          ? data.emailSent
+            ? `Voucher ${data.voucher.code} created and emailed to ${newBuyerEmail}.`
+            : `Voucher ${data.voucher.code} created, but the email failed to send — check the address or try resending manually.`
+          : `Voucher ${data.voucher.code} created (no email address given, so nothing was sent).`
+      );
+
       setNewAmount("");
       setNewBuyerName("");
       setNewBuyerEmail("");
@@ -119,8 +172,8 @@ export default function AdminVouchersPage() {
     <div>
       <h1 className="font-display text-3xl text-plum">Gift Vouchers</h1>
       <p className="mt-2 text-plum/70">
-        Every voucher purchased online is logged here, with its remaining balance. Use the redeem box
-        when a customer uses a voucher in person.
+        Set which amounts customers can pick from, add vouchers manually, and manage every voucher
+        that&apos;s been issued — its remaining balance, and redemption when used in person.
       </p>
 
       <div className="mt-6 flex items-center gap-3 rounded-2xl bg-white/70 p-6">
@@ -134,6 +187,60 @@ export default function AdminVouchersPage() {
           />
           Gift vouchers available for purchase on the website
         </label>
+      </div>
+
+      <div className="mt-6 rounded-2xl bg-white/70 p-6">
+        <h2 className="font-display text-xl text-mauve">Preset amounts</h2>
+        <p className="mt-1 text-sm text-plum/70">
+          These are the quick-select buttons customers see on the Gift Vouchers page. Edit or remove any
+          of them, or add new ones — customers can always type a different amount too (minimum €20).
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          {presets.map((preset) => (
+            <div key={preset.id} className="flex items-center gap-1 rounded-full border border-rose bg-white px-2 py-1">
+              <span className="pl-2 text-sm text-plum/60">€</span>
+              <input
+                type="number"
+                step="0.01"
+                value={presetEdits[preset.id] ?? ""}
+                onChange={(e) => setPresetEdits((prev) => ({ ...prev, [preset.id]: e.target.value }))}
+                className="w-16 text-sm text-plum focus:outline-none"
+              />
+              <button
+                onClick={() => savePresetEdit(preset)}
+                disabled={savingPreset === preset.id}
+                className="rounded-full px-2 py-1 text-xs text-glow hover:underline disabled:opacity-60"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => deletePreset(preset)}
+                disabled={savingPreset === preset.id}
+                className="rounded-full px-2 py-1 text-xs text-maroon hover:underline disabled:opacity-60"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+          <div className="flex items-center gap-1 rounded-full border border-dashed border-rose px-2 py-1">
+            <span className="pl-2 text-sm text-plum/60">€</span>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="New"
+              value={newPresetAmount}
+              onChange={(e) => setNewPresetAmount(e.target.value)}
+              className="w-16 text-sm text-plum placeholder:text-plum/40 focus:outline-none"
+            />
+            <button
+              onClick={addPreset}
+              disabled={savingPreset === "new"}
+              className="rounded-full px-2 py-1 text-xs text-glow hover:underline disabled:opacity-60"
+            >
+              Add
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="mt-6 rounded-2xl bg-white/70 p-6">
@@ -176,6 +283,11 @@ export default function AdminVouchersPage() {
           {createError && (
             <p className="sm:col-span-2 text-sm text-maroon" role="alert">
               {createError}
+            </p>
+          )}
+          {createSuccessMsg && (
+            <p className="sm:col-span-2 text-sm text-glow">
+              {createSuccessMsg}
             </p>
           )}
           <button

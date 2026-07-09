@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import type { GiftVoucherPreset } from "@/lib/types";
 
-const AMOUNT_OPTIONS = [25, 50, 75, 100, 125, 150, 175, 200];
+const MIN_AMOUNT = 20;
 
-export default function GiftVoucherForm() {
-  const [amount, setAmount] = useState(50);
+export default function GiftVoucherForm({ presets }: { presets: GiftVoucherPreset[] }) {
+  const [amount, setAmount] = useState<number | null>(presets[0]?.amount ?? null);
   const [customAmount, setCustomAmount] = useState("");
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
@@ -15,10 +16,16 @@ export default function GiftVoucherForm() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const effectiveAmount = customAmount ? parseInt(customAmount, 10) || 0 : amount;
+  const effectiveAmount = customAmount ? parseFloat(customAmount) || 0 : amount || 0;
+  const isValidAmount = effectiveAmount >= MIN_AMOUNT;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isValidAmount) {
+      setErrorMessage(`The minimum voucher amount is €${MIN_AMOUNT}.`);
+      setStatus("error");
+      return;
+    }
     setStatus("loading");
     setErrorMessage("");
 
@@ -52,40 +59,45 @@ export default function GiftVoucherForm() {
     <form onSubmit={handleSubmit} className="mx-auto max-w-xl space-y-6 rounded-2xl bg-white/70 p-6 md:p-8">
       <div>
         <label className="mb-2 block font-body text-sm text-plum">Choose an amount</label>
-        <div className="flex flex-wrap gap-2">
-          {AMOUNT_OPTIONS.map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => {
-                setAmount(opt);
-                setCustomAmount("");
-              }}
-              className={`rounded-full border px-4 py-2 font-body text-sm transition-colors ${
-                !customAmount && amount === opt
-                  ? "border-glow bg-glow text-white"
-                  : "border-rose bg-white text-plum hover:border-glow hover:text-glow"
-              }`}
-            >
-              €{opt}
-            </button>
-          ))}
-        </div>
+        {presets.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {presets.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => {
+                  setAmount(preset.amount);
+                  setCustomAmount("");
+                }}
+                className={`rounded-full border px-4 py-2 font-body text-sm transition-colors ${
+                  !customAmount && amount === preset.amount
+                    ? "border-glow bg-glow text-white"
+                    : "border-rose bg-white text-plum hover:border-glow hover:text-glow"
+                }`}
+              >
+                €{preset.amount % 1 === 0 ? preset.amount : preset.amount.toFixed(2)}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="mt-3">
           <label htmlFor="custom-amount" className="mb-1 block font-body text-xs text-plum/70">
-            Or enter any custom amount
+            Or enter a custom amount (minimum €{MIN_AMOUNT})
           </label>
           <input
             id="custom-amount"
             type="number"
             step={1}
-            min={1}
-            placeholder="e.g. 60"
+            min={MIN_AMOUNT}
+            placeholder={`e.g. ${MIN_AMOUNT + 10}`}
             value={customAmount}
             onChange={(e) => setCustomAmount(e.target.value)}
             className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
           />
         </div>
+        {effectiveAmount > 0 && !isValidAmount && (
+          <p className="mt-2 text-xs text-maroon">The minimum voucher amount is €{MIN_AMOUNT}.</p>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -139,7 +151,7 @@ export default function GiftVoucherForm() {
 
       <button
         type="submit"
-        disabled={status === "loading" || effectiveAmount <= 0}
+        disabled={status === "loading" || !isValidAmount}
         className="w-full rounded-full bg-plum px-6 py-3 font-display text-blush transition-colors hover:bg-glow disabled:opacity-60"
       >
         {status === "loading" ? "Redirecting to payment…" : `Buy Voucher — €${effectiveAmount || 0}`}

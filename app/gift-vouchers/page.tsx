@@ -2,6 +2,7 @@ import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import GiftVoucherForm from "@/components/GiftVoucherForm";
 import { getSiteSettings, getSocialLinks } from "@/lib/data";
+import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -12,9 +13,15 @@ export const metadata: Metadata = {
 export const revalidate = 0;
 
 export default async function GiftVouchersPage() {
-  const [settings, socialLinks] = await Promise.all([getSiteSettings(), getSocialLinks()]);
+  const supabase = createClient();
+  const [settings, socialLinks, presetsResult] = await Promise.all([
+    getSiteSettings(),
+    getSocialLinks(),
+    supabase.from("gift_voucher_presets").select("*").eq("is_active", true).order("sort_order"),
+  ]);
 
   const enabled = settings?.gift_vouchers_enabled ?? true;
+  const presets = presetsResult.data ?? [];
 
   return (
     <>
@@ -30,7 +37,7 @@ export default async function GiftVouchersPage() {
 
         <div className="mt-14">
           {enabled ? (
-            <GiftVoucherForm />
+            <GiftVoucherForm presets={presets} />
           ) : (
             <p className="mx-auto max-w-xl rounded-2xl bg-white/70 p-6 text-center font-body text-plum/70">
               Gift vouchers aren&apos;t available to buy online right now, please contact us directly if

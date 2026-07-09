@@ -87,6 +87,13 @@ export interface GalleryImage {
   created_at: string;
 }
 
+export interface GiftVoucherPreset {
+  id: string;
+  amount: number;
+  sort_order: number;
+  is_active: boolean;
+}
+
 export interface GiftVoucher {
   id: string;
   code: string;
