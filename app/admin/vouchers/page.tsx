@@ -14,6 +14,7 @@ export default function AdminVouchersPage() {
   const [savingToggle, setSavingToggle] = useState(false);
   const [redeemAmounts, setRedeemAmounts] = useState<Record<string, string>>({});
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [presetEdits, setPresetEdits] = useState<Record<string, string>>({});
   const [newPresetAmount, setNewPresetAmount] = useState("");
   const [savingPreset, setSavingPreset] = useState<string | null>(null);
@@ -77,6 +78,22 @@ export default function AdminVouchersPage() {
     setRedeemingId(voucher.id);
     await supabase.from("gift_vouchers").update({ balance: 0 }).eq("id", voucher.id);
     setRedeemingId(null);
+    refresh();
+  }
+
+  async function deleteVoucher(voucher: GiftVoucher) {
+    const label = `${voucher.code} (€${voucher.amount.toFixed(2)})`;
+    if (!confirm(`Delete voucher ${label}? This cannot be undone.`)) return;
+
+    setDeletingId(voucher.id);
+    const { error } = await supabase.from("gift_vouchers").delete().eq("id", voucher.id);
+    setDeletingId(null);
+
+    if (error) {
+      alert("Could not delete this voucher. Please try again.");
+      return;
+    }
+
     refresh();
   }
 
@@ -311,6 +328,7 @@ export default function AdminVouchersPage() {
               <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Purchased</th>
               <th className="px-4 py-3">Redeem in person</th>
+              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -345,7 +363,7 @@ export default function AdminVouchersPage() {
                         />
                         <button
                           onClick={() => redeemInPerson(v)}
-                          disabled={redeemingId === v.id}
+                          disabled={redeemingId === v.id || deletingId === v.id}
                           className="rounded-full bg-plum px-3 py-1 text-xs text-blush transition-colors hover:bg-glow disabled:opacity-60"
                         >
                           Redeem amount
@@ -355,7 +373,7 @@ export default function AdminVouchersPage() {
                         <input
                           type="checkbox"
                           checked={false}
-                          disabled={redeemingId === v.id}
+                          disabled={redeemingId === v.id || deletingId === v.id}
                           onChange={() => markFullyUsed(v)}
                           className="h-4 w-4 accent-glow"
                         />
@@ -366,11 +384,20 @@ export default function AdminVouchersPage() {
                     <span className="text-xs text-plum/50">—</span>
                   )}
                 </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => deleteVoucher(v)}
+                    disabled={deletingId === v.id || redeemingId === v.id}
+                    className="rounded-full border border-maroon/30 px-3 py-1 text-xs text-maroon transition-colors hover:bg-maroon hover:text-blush disabled:opacity-60"
+                  >
+                    {deletingId === v.id ? "Deleting…" : "Delete"}
+                  </button>
+                </td>
               </tr>
             ))}
             {vouchers.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-plum/60">
+                <td colSpan={8} className="px-4 py-6 text-center text-plum/60">
                   No vouchers purchased yet.
                 </td>
               </tr>
