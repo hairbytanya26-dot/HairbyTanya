@@ -77,10 +77,10 @@ export async function createBirthdayCalendarEvent({
   const calendar = google.calendar({ version: "v3", auth });
   const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
 
-  // All-day event, repeating every year — the starting year doesn't matter,
-  // Google Calendar will still generate the correct occurrence every future
-  // year on this month/day regardless of whether this first instance is in
-  // the past or future within the current year.
+  // A timed 7:00am event, repeating every year. Using a named timeZone
+  // (rather than a fixed UTC offset) means Google Calendar automatically
+  // handles Irish Summer Time correctly for every future occurrence, the
+  // same way a recurring 7am event should behave regardless of the year.
   const year = new Date().getFullYear();
   const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
@@ -89,8 +89,8 @@ export async function createBirthdayCalendarEvent({
     requestBody: {
       summary: `🎂 ${name}'s Birthday — send voucher!`,
       description: `Mailing list birthday reminder.\nName: ${name}\nEmail: ${email}\n\nConsider sending them a birthday voucher from the admin panel.`,
-      start: { date: dateStr },
-      end: { date: dateStr },
+      start: { dateTime: `${dateStr}T07:00:00`, timeZone: "Europe/Dublin" },
+      end: { dateTime: `${dateStr}T07:30:00`, timeZone: "Europe/Dublin" },
       recurrence: ["RRULE:FREQ=YEARLY"],
     },
     sendUpdates: "none", // internal reminder only — no invite sent to the customer

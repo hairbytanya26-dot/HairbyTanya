@@ -17,9 +17,10 @@ function formatBirthday(s: MailingListSubscriber): string {
 export default function AdminMailingListPage() {
   const [subscribers, setSubscribers] = useState<MailingListSubscriber[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const supabase = createClient();
 
-  useEffect(() => {
-    const supabase = createClient();
+  function refresh() {
     supabase
       .from("mailing_list_subscribers")
       .select("*")
@@ -28,7 +29,24 @@ export default function AdminMailingListPage() {
         setSubscribers(data ?? []);
         setLoading(false);
       });
+  }
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function deleteSubscriber(s: MailingListSubscriber) {
+    if (!confirm(`Remove ${s.name} (${s.email}) from the mailing list? This cannot be undone.`)) return;
+    setDeletingId(s.id);
+    const { error } = await supabase.from("mailing_list_subscribers").delete().eq("id", s.id);
+    setDeletingId(null);
+    if (error) {
+      alert("Could not remove this subscriber. Please try again.");
+      return;
+    }
+    refresh();
+  }
 
   function downloadCsv() {
     const header = "Name,Email,Birthday,Subscribed At\n";
@@ -71,6 +89,7 @@ export default function AdminMailingListPage() {
               <th className="px-4 py-3">Birthday</th>
               <th className="px-4 py-3">Subscribed</th>
               <th className="px-4 py-3">Welcome email</th>
+              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -81,11 +100,20 @@ export default function AdminMailingListPage() {
                 <td className="px-4 py-3">{formatBirthday(s)}</td>
                 <td className="px-4 py-3">{format(new Date(s.subscribed_at), "d MMM yyyy")}</td>
                 <td className="px-4 py-3">{s.welcome_email_sent ? "Sent ✓" : "—"}</td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => deleteSubscriber(s)}
+                    disabled={deletingId === s.id}
+                    className="rounded-full border border-maroon/30 px-3 py-1 text-xs text-maroon transition-colors hover:bg-maroon hover:text-blush disabled:opacity-60"
+                  >
+                    {deletingId === s.id ? "Removing…" : "Delete"}
+                  </button>
+                </td>
               </tr>
             ))}
             {subscribers.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-plum/60">
+                <td colSpan={6} className="px-4 py-6 text-center text-plum/60">
                   No subscribers yet.
                 </td>
               </tr>
