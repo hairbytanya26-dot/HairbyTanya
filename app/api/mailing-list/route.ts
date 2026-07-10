@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, fillTemplate } from "@/lib/email";
+import { createBirthdayCalendarEvent } from "@/lib/google-calendar";
 
 export async function POST(request: Request) {
   try {
@@ -34,6 +35,17 @@ export async function POST(request: Request) {
       }
       console.error("mailing_list insert error", insertError);
       return NextResponse.json({ error: "Could not sign you up right now. Please try again." }, { status: 500 });
+    }
+
+    // Log a recurring yearly reminder on the connected Google Calendar so
+    // a birthday voucher can be sent — non-fatal if it fails, signup still
+    // succeeds either way.
+    if (validDay && validMonth) {
+      try {
+        await createBirthdayCalendarEvent({ name: name.trim(), email: email.trim(), day: validDay, month: validMonth });
+      } catch (calendarError) {
+        console.error("birthday calendar event error", calendarError);
+      }
     }
 
     // Fetch the admin-customisable welcome email template

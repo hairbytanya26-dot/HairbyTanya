@@ -62,6 +62,43 @@ export async function createCalendarEvent({
   return data.id;
 }
 
+export async function createBirthdayCalendarEvent({
+  name,
+  email,
+  day,
+  month,
+}: {
+  name: string;
+  email: string;
+  day: number;
+  month: number;
+}) {
+  const auth = getOAuth2Client();
+  const calendar = google.calendar({ version: "v3", auth });
+  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+
+  // All-day event, repeating every year — the starting year doesn't matter,
+  // Google Calendar will still generate the correct occurrence every future
+  // year on this month/day regardless of whether this first instance is in
+  // the past or future within the current year.
+  const year = new Date().getFullYear();
+  const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  const { data } = await calendar.events.insert({
+    calendarId,
+    requestBody: {
+      summary: `🎂 ${name}'s Birthday — send voucher!`,
+      description: `Mailing list birthday reminder.\nName: ${name}\nEmail: ${email}\n\nConsider sending them a birthday voucher from the admin panel.`,
+      start: { date: dateStr },
+      end: { date: dateStr },
+      recurrence: ["RRULE:FREQ=YEARLY"],
+    },
+    sendUpdates: "none", // internal reminder only — no invite sent to the customer
+  });
+
+  return data.id;
+}
+
 export async function deleteCalendarEvent(eventId: string) {
   const auth = getOAuth2Client();
   const calendar = google.calendar({ version: "v3", auth });
