@@ -5,6 +5,15 @@ import { createClient } from "@/lib/supabase/client";
 import type { MailingListSubscriber } from "@/lib/types";
 import { format } from "date-fns";
 
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function formatBirthday(s: MailingListSubscriber): string {
+  if (!s.birth_day || !s.birth_month) return "—";
+  return `${s.birth_day} ${MONTH_NAMES[s.birth_month - 1]}`;
+}
+
 export default function AdminMailingListPage() {
   const [subscribers, setSubscribers] = useState<MailingListSubscriber[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,9 +31,9 @@ export default function AdminMailingListPage() {
   }, []);
 
   function downloadCsv() {
-    const header = "Name,Email,Subscribed At\n";
+    const header = "Name,Email,Birthday,Subscribed At\n";
     const rows = subscribers
-      .map((s) => `"${s.name}","${s.email}","${s.subscribed_at}"`)
+      .map((s) => `"${s.name}","${s.email}","${formatBirthday(s)}","${s.subscribed_at}"`)
       .join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -59,6 +68,7 @@ export default function AdminMailingListPage() {
             <tr>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Birthday</th>
               <th className="px-4 py-3">Subscribed</th>
               <th className="px-4 py-3">Welcome email</th>
             </tr>
@@ -68,13 +78,14 @@ export default function AdminMailingListPage() {
               <tr key={s.id} className="border-t border-rose/40">
                 <td className="px-4 py-3">{s.name}</td>
                 <td className="px-4 py-3">{s.email}</td>
+                <td className="px-4 py-3">{formatBirthday(s)}</td>
                 <td className="px-4 py-3">{format(new Date(s.subscribed_at), "d MMM yyyy")}</td>
                 <td className="px-4 py-3">{s.welcome_email_sent ? "Sent ✓" : "—"}</td>
               </tr>
             ))}
             {subscribers.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-plum/60">
+                <td colSpan={5} className="px-4 py-6 text-center text-plum/60">
                   No subscribers yet.
                 </td>
               </tr>

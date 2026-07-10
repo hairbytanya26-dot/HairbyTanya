@@ -30,7 +30,7 @@ export default function GiftVoucherForm({ presets }: { presets: GiftVoucherPrese
     setErrorMessage("");
 
     try {
-      const res = await fetch("/api/gift-vouchers/create-checkout", {
+      const res = await fetch("/api/gift-vouchers/create-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -47,8 +47,8 @@ export default function GiftVoucherForm({ presets }: { presets: GiftVoucherPrese
         throw new Error(data.error || "Something went wrong. Please try again.");
       }
 
-      // Send the browser to SumUp's hosted payment page.
-      window.location.href = data.checkoutUrl;
+      // Send them to the payment instructions page.
+      window.location.href = `/gift-vouchers/request-sent?order=${data.requestId}`;
     } catch (err) {
       setStatus("error");
       setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
@@ -154,7 +154,7 @@ export default function GiftVoucherForm({ presets }: { presets: GiftVoucherPrese
         disabled={status === "loading" || !isValidAmount}
         className="w-full rounded-full bg-plum px-6 py-3 font-display text-blush transition-colors hover:bg-glow disabled:opacity-60"
       >
-        {status === "loading" ? "Redirecting to payment…" : `Buy Voucher — €${effectiveAmount || 0}`}
+        {status === "loading" ? "Sending your request…" : `Request Voucher — €${effectiveAmount || 0}`}
       </button>
     </form>
   );

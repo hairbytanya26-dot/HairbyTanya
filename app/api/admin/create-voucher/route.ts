@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   }
 
-  const { amount, buyerName, buyerEmail, recipientName, recipientEmail } = await request.json();
+  const { amount, buyerName, buyerEmail, recipientName, recipientEmail, voucherType } = await request.json();
 
   const amountNum = Number(amount);
   if (!Number.isFinite(amountNum) || amountNum <= 0) {
@@ -24,6 +24,8 @@ export async function POST(request: Request) {
   if (!buyerName || typeof buyerName !== "string" || !buyerName.trim()) {
     return NextResponse.json({ error: "Please enter a name for this voucher." }, { status: 400 });
   }
+
+  const isBirthday = voucherType === "birthday";
 
   const supabase = createAdminClient();
   const code = await generateUniqueVoucherCode();
@@ -40,6 +42,7 @@ export async function POST(request: Request) {
       recipient_name: recipientName?.trim() || null,
       recipient_email: recipientEmail?.trim() || null,
       sumup_checkout_id: null,
+      voucher_type: isBirthday ? "birthday" : "manual",
     })
     .select()
     .single();
@@ -52,6 +55,7 @@ export async function POST(request: Request) {
   // Send the same automated voucher email a customer would get, as long as
   // a real email address was actually entered (cash/walk-in sales with no
   // email on file simply skip this step — there's nowhere to send it).
+  // Birthday vouchers get a special message and subject instead.
   let emailSent = false;
   if (trimmedEmail) {
     try {
@@ -63,7 +67,14 @@ export async function POST(request: Request) {
           recipient_name: recipientName?.trim() || null,
           recipient_email: recipientEmail?.trim() || null,
         },
-        code
+        code,
+        isBirthday
+          ? {
+              subject: "Happy Birthday from Hair by Tanya! 🎂",
+              introMessage:
+                "At Hair By Tanya we want to celebrate your birthday with you, so please have this voucher off your next visit. Happy Birthday!",
+            }
+          : undefined
       );
       emailSent = true;
     } catch (emailError) {

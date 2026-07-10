@@ -59,6 +59,8 @@ export interface MailingListSubscriber {
   email: string;
   subscribed_at: string;
   welcome_email_sent: boolean;
+  birth_day: number | null;
+  birth_month: number | null;
 }
 
 export interface EmailTemplate {
@@ -104,6 +106,7 @@ export interface GiftVoucher {
   recipient_name: string | null;
   recipient_email: string | null;
   sumup_checkout_id: string | null;
+  voucher_type: string;
   purchased_at: string;
 }
 

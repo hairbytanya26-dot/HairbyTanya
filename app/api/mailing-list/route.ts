@@ -4,7 +4,7 @@ import { sendEmail, fillTemplate } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
-    const { name, email } = await request.json();
+    const { name, email, birthDay, birthMonth } = await request.json();
 
     if (!name || typeof name !== "string" || !email || typeof email !== "string") {
       return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
@@ -15,11 +15,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
     }
 
+    const validDay = Number.isInteger(birthDay) && birthDay >= 1 && birthDay <= 31 ? birthDay : null;
+    const validMonth = Number.isInteger(birthMonth) && birthMonth >= 1 && birthMonth <= 12 ? birthMonth : null;
+
     const supabase = createAdminClient();
 
-    const { error: insertError } = await supabase
-      .from("mailing_list_subscribers")
-      .insert({ name: name.trim(), email: email.trim().toLowerCase() });
+    const { error: insertError } = await supabase.from("mailing_list_subscribers").insert({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      birth_day: validDay,
+      birth_month: validMonth,
+    });
 
     if (insertError) {
       // Unique violation = already subscribed; treat as a friendly success, not an error.

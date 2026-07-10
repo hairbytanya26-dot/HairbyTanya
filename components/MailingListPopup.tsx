@@ -9,6 +9,8 @@ export default function MailingListPopup() {
   const [visible, setVisible] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [birthDay, setBirthDay] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -33,7 +35,12 @@ export default function MailingListPopup() {
       const res = await fetch("/api/mailing-list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({
+          name,
+          email,
+          birthDay: birthDay ? Number(birthDay) : undefined,
+          birthMonth: birthMonth ? Number(birthMonth) : undefined,
+        }),
       });
       const data = await res.json();
 
@@ -117,6 +124,42 @@ export default function MailingListPopup() {
                   placeholder="Your email"
                   className="w-full rounded-full border border-rose bg-white px-4 py-2 font-body text-plum placeholder:text-plum/40 focus:border-glow focus:outline-none"
                 />
+              </div>
+              <div>
+                <label className="mb-1 block font-body text-xs text-plum/70">
+                  Your birthday (optional) — so we can treat you on the day 🎂
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    aria-label="Birthday day"
+                    value={birthDay}
+                    onChange={(e) => setBirthDay(e.target.value)}
+                    className="w-1/2 rounded-full border border-rose bg-white px-4 py-2 font-body text-plum focus:border-glow focus:outline-none"
+                  >
+                    <option value="">Day</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Birthday month"
+                    value={birthMonth}
+                    onChange={(e) => setBirthMonth(e.target.value)}
+                    className="w-1/2 rounded-full border border-rose bg-white px-4 py-2 font-body text-plum focus:border-glow focus:outline-none"
+                  >
+                    <option value="">Month</option>
+                    {[
+                      "January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December",
+                    ].map((m, i) => (
+                      <option key={m} value={i + 1}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {status === "error" && (

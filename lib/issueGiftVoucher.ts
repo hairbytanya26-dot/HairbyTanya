@@ -16,7 +16,11 @@ export type VoucherEmailRecipientInfo = {
   recipient_email: string | null;
 };
 
-export async function sendVoucherEmails(pendingOrder: VoucherEmailRecipientInfo, code: string) {
+export async function sendVoucherEmails(
+  pendingOrder: VoucherEmailRecipientInfo,
+  code: string,
+  options?: { subject?: string; introMessage?: string }
+) {
   const [settings, socialLinks] = await Promise.all([getSiteSettings(), getSocialLinks()]);
   const instagramLink = socialLinks.find((s) => s.icon_key === "instagram");
 
@@ -28,11 +32,12 @@ export async function sendVoucherEmails(pendingOrder: VoucherEmailRecipientInfo,
     siteUrl: "hairbytanyam.com",
     phone: settings?.contact_phone,
     instagramHandle: instagramLink?.platform,
+    introMessage: options?.introMessage,
   });
 
   await sendEmail({
     to: pendingOrder.buyer_email,
-    subject: "Your Hair by Tanya Gift Voucher",
+    subject: options?.subject || "Your Hair by Tanya Gift Voucher",
     html: emailHtml,
   });
 
@@ -42,7 +47,7 @@ export async function sendVoucherEmails(pendingOrder: VoucherEmailRecipientInfo,
   ) {
     await sendEmail({
       to: pendingOrder.recipient_email,
-      subject: `${pendingOrder.buyer_name} sent you a Hair by Tanya Gift Voucher!`,
+      subject: options?.subject || `${pendingOrder.buyer_name} sent you a Hair by Tanya Gift Voucher!`,
       html: emailHtml,
     });
   }

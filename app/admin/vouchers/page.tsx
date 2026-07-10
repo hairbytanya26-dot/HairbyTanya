@@ -5,10 +5,23 @@ import { createClient } from "@/lib/supabase/client";
 import type { GiftVoucher, GiftVoucherPreset } from "@/lib/types";
 import { format } from "date-fns";
 
+interface PendingVoucherOrder {
+  id: string;
+  amount: number;
+  buyer_name: string;
+  buyer_email: string;
+  recipient_name: string | null;
+  recipient_email: string | null;
+  payment_method: string;
+  completed: boolean;
+  created_at: string;
+}
+
 export default function AdminVouchersPage() {
   const supabase = createClient();
   const [vouchers, setVouchers] = useState<GiftVoucher[]>([]);
   const [presets, setPresets] = useState<GiftVoucherPreset[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<PendingVoucherOrder[]>([]);
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savingToggle, setSavingToggle] = useState(false);
@@ -18,6 +31,7 @@ export default function AdminVouchersPage() {
   const [presetEdits, setPresetEdits] = useState<Record<string, string>>({});
   const [newPresetAmount, setNewPresetAmount] = useState("");
   const [savingPreset, setSavingPreset] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const [newAmount, setNewAmount] = useState("");
   const [newBuyerName, setNewBuyerName] = useState("");
@@ -27,16 +41,30 @@ export default function AdminVouchersPage() {
   const [createError, setCreateError] = useState("");
   const [createSuccessMsg, setCreateSuccessMsg] = useState("");
 
+  const [bdayAmount, setBdayAmount] = useState("");
+  const [bdayName, setBdayName] = useState("");
+  const [bdayEmail, setBdayEmail] = useState("");
+  const [bdayCreating, setBdayCreating] = useState(false);
+  const [bdayError, setBdayError] = useState("");
+  const [bdaySuccessMsg, setBdaySuccessMsg] = useState("");
+
   async function refresh() {
-    const [{ data: voucherData }, { data: settingsData }, { data: presetData }] = await Promise.all([
-      supabase.from("gift_vouchers").select("*").order("purchased_at", { ascending: false }),
-      supabase.from("site_settings").select("gift_vouchers_enabled").eq("id", 1).single(),
-      supabase.from("gift_voucher_presets").select("*").order("sort_order"),
-    ]);
+    const [{ data: voucherData }, { data: settingsData }, { data: presetData }, { data: pendingData }] =
+      await Promise.all([
+        supabase.from("gift_vouchers").select("*").order("purchased_at", { ascending: false }),
+        supabase.from("site_settings").select("gift_vouchers_enabled").eq("id", 1).single(),
+        supabase.from("gift_voucher_presets").select("*").order("sort_order"),
+        supabase
+          .from("voucher_pending_orders")
+          .select("*")
+          .eq("completed", false)
+          .order("created_at", { ascending: true }),
+      ]);
     setVouchers(voucherData ?? []);
     setEnabled(settingsData?.gift_vouchers_enabled ?? true);
     setPresets(presetData ?? []);
     setPresetEdits(Object.fromEntries((presetData ?? []).map((p) => [p.id, String(p.amount)])));
+    setPendingRequests(pendingData ?? []);
     setLoading(false);
   }
 
@@ -183,6 +211,84 @@ export default function AdminVouchersPage() {
     }
   }
 
+  async function approveRequest(order: PendingVoucherOrder) {
+    if (!confirm(`Confirm you've received €${order.amount.toFixed(2)} from ${order.buyer_name} on Revolut, and issue the voucher now?`)) return;
+    setApprovingId(order.id);
+    try {
+      const res = await fetch("/api/admin/approve-voucher-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not approve this request.");
+      refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setApprovingId(null);
+    }
+  }
+
+  async function declineRequest(order: PendingVoucherOrder) {
+    if (!confirm(`Remove this request from the list? No voucher will be issued (use this if payment was never received).`)) return;
+    setApprovingId(order.id);
+    await supabase.from("voucher_pending_orders").delete().eq("id", order.id);
+    setApprovingId(null);
+    refresh();
+  }
+
+  async function createBirthdayVoucher(e: React.FormEvent) {
+    e.preventDefault();
+    setBdayError("");
+    setBdaySuccessMsg("");
+
+    const amountNum = parseFloat(bdayAmount);
+    if (!amountNum || amountNum <= 0) {
+      setBdayError("Enter a valid amount.");
+      return;
+    }
+    if (!bdayName.trim()) {
+      setBdayError("Enter the customer's name.");
+      return;
+    }
+    if (!bdayEmail.trim()) {
+      setBdayError("An email address is required so the birthday message can be sent.");
+      return;
+    }
+
+    setBdayCreating(true);
+    try {
+      const res = await fetch("/api/admin/create-voucher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amountNum,
+          buyerName: bdayName,
+          buyerEmail: bdayEmail,
+          voucherType: "birthday",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not create the voucher.");
+
+      setBdaySuccessMsg(
+        data.emailSent
+          ? `Birthday voucher ${data.voucher.code} created and emailed to ${bdayEmail}.`
+          : `Voucher ${data.voucher.code} created, but the email failed to send — check the address or try again.`
+      );
+
+      setBdayAmount("");
+      setBdayName("");
+      setBdayEmail("");
+      refresh();
+    } catch (err) {
+      setBdayError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setBdayCreating(false);
+    }
+  }
+
   if (loading) return <p className="text-plum/70">Loading…</p>;
 
   return (
@@ -204,6 +310,55 @@ export default function AdminVouchersPage() {
           />
           Gift vouchers available for purchase on the website
         </label>
+      </div>
+
+      <div className="mt-6 rounded-2xl bg-white/70 p-6">
+        <h2 className="font-display text-xl text-mauve">
+          Pending Revolut requests {pendingRequests.length > 0 && `(${pendingRequests.length})`}
+        </h2>
+        <p className="mt-1 text-sm text-plum/70">
+          Customers land here after requesting a voucher online. Check your Revolut app for the
+          payment, then approve to issue the voucher and send the email automatically.
+        </p>
+        {pendingRequests.length === 0 ? (
+          <p className="mt-4 text-sm text-plum/50">No pending requests right now.</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {pendingRequests.map((order) => (
+              <div
+                key={order.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-blush px-4 py-3"
+              >
+                <div>
+                  <p className="font-body text-sm text-plum">
+                    <span className="font-semibold">€{order.amount.toFixed(2)}</span> — {order.buyer_name}{" "}
+                    <span className="text-plum/60">({order.buyer_email})</span>
+                  </p>
+                  <p className="text-xs text-plum/50">
+                    Requested {format(new Date(order.created_at), "d MMM yyyy, h:mmaaa")}
+                    {order.recipient_name && ` · Gift for ${order.recipient_name}`}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => approveRequest(order)}
+                    disabled={approvingId === order.id}
+                    className="rounded-full bg-plum px-4 py-1.5 text-xs text-blush transition-colors hover:bg-glow disabled:opacity-60"
+                  >
+                    {approvingId === order.id ? "Working…" : "Approve & Send"}
+                  </button>
+                  <button
+                    onClick={() => declineRequest(order)}
+                    disabled={approvingId === order.id}
+                    className="rounded-full border border-maroon/30 px-4 py-1.5 text-xs text-maroon transition-colors hover:bg-maroon hover:text-blush disabled:opacity-60"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-6 rounded-2xl bg-white/70 p-6">
@@ -317,11 +472,58 @@ export default function AdminVouchersPage() {
         </form>
       </div>
 
+      <div className="mt-6 rounded-2xl bg-white/70 p-6">
+        <h2 className="font-display text-xl text-mauve">Send a birthday voucher 🎂</h2>
+        <p className="mt-1 text-sm text-plum/70">
+          Creates a voucher and emails it with a birthday message instead of the usual purchase
+          confirmation. An email address is required here, since sending it is the whole point.
+        </p>
+        <form onSubmit={createBirthdayVoucher} className="mt-4 grid gap-3 sm:grid-cols-3">
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            placeholder="Amount (€)"
+            value={bdayAmount}
+            onChange={(e) => setBdayAmount(e.target.value)}
+            className="rounded-full border border-rose bg-white px-4 py-2 text-sm text-plum focus:border-glow focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Customer's name"
+            value={bdayName}
+            onChange={(e) => setBdayName(e.target.value)}
+            className="rounded-full border border-rose bg-white px-4 py-2 text-sm text-plum focus:border-glow focus:outline-none"
+          />
+          <input
+            type="email"
+            placeholder="Customer's email"
+            value={bdayEmail}
+            onChange={(e) => setBdayEmail(e.target.value)}
+            className="rounded-full border border-rose bg-white px-4 py-2 text-sm text-plum focus:border-glow focus:outline-none"
+          />
+          {bdayError && (
+            <p className="sm:col-span-3 text-sm text-maroon" role="alert">
+              {bdayError}
+            </p>
+          )}
+          {bdaySuccessMsg && <p className="sm:col-span-3 text-sm text-glow">{bdaySuccessMsg}</p>}
+          <button
+            type="submit"
+            disabled={bdayCreating}
+            className="sm:col-span-3 rounded-full bg-plum px-6 py-2.5 font-display text-blush transition-colors hover:bg-glow disabled:opacity-60"
+          >
+            {bdayCreating ? "Sending…" : "Send Birthday Voucher"}
+          </button>
+        </form>
+      </div>
+
       <div className="mt-8 overflow-x-auto rounded-2xl bg-white/70">
         <table className="w-full text-left text-sm">
           <thead className="bg-rose/40 text-plum">
             <tr>
               <th className="px-4 py-3">Buyer</th>
+              <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Recipient</th>
               <th className="px-4 py-3">Amount</th>
               <th className="px-4 py-3">Balance</th>
@@ -337,6 +539,9 @@ export default function AdminVouchersPage() {
                 <td className="px-4 py-3">
                   {v.buyer_name}
                   <div className="text-xs text-plum/60">{v.buyer_email}</div>
+                </td>
+                <td className="px-4 py-3 text-xs capitalize text-plum/70">
+                  {v.voucher_type === "birthday" ? "🎂 Birthday" : v.voucher_type}
                 </td>
                 <td className="px-4 py-3">
                   {v.recipient_name || "—"}
@@ -397,7 +602,7 @@ export default function AdminVouchersPage() {
             ))}
             {vouchers.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-plum/60">
+                <td colSpan={9} className="px-4 py-6 text-center text-plum/60">
                   No vouchers purchased yet.
                 </td>
               </tr>

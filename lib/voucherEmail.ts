@@ -24,6 +24,7 @@ export function buildVoucherEmailHtml({
   siteUrl,
   phone,
   instagramHandle,
+  introMessage,
 }: {
   amount: number;
   buyerName: string;
@@ -32,6 +33,7 @@ export function buildVoucherEmailHtml({
   siteUrl: string;
   phone?: string | null;
   instagramHandle?: string | null;
+  introMessage?: string;
 }): string {
   const brandUrl = normaliseUrl(siteUrl || "https://hairbytanyam.com");
   const displayUrl = brandUrl.replace(/^https?:\/\//i, "");
@@ -69,6 +71,17 @@ export function buildVoucherEmailHtml({
 
           <tr>
             <td style="padding:0 26px 22px 26px; background:#fff8f5;">
+              ${
+                introMessage
+                  ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; margin-bottom:22px;">
+                <tr>
+                  <td style="padding:18px 22px; text-align:center; background:#f6ebe7; border-radius:12px; font-family:Georgia,'Times New Roman',serif; font-size:17px; color:#2f3030; line-height:1.6;">
+                    ${escapeHtml(introMessage)}
+                  </td>
+                </tr>
+              </table>`
+                  : ""
+              }
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border:1px solid #b97968; border-radius:14px; border-collapse:separate; overflow:hidden; background:#fffaf8;">
                 <tr>
                   <td width="38%" valign="middle" style="padding:34px 22px; text-align:center; border-right:1px solid #b97968; background:#fff7f4;">
